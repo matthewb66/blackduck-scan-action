@@ -19,6 +19,6 @@ def run_workflow(workflow_script_file, runargs):
 
     if retval != 0:
         print('ERROR: Workflow returned non-zero value')
-        #sys.exit(2)
+        # sys.exit(2)
 
     return retval
