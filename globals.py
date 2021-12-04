@@ -2,19 +2,14 @@ detect_jar = "/tmp/synopsys-detect.jar"
 # workflow_script = "/Users/mbrad/working/blackduck-scan-action/blackduck-rapid-scan-to-github.py"
 # detect_jar = "./synopsys-detect.jar"
 # workflow_script = "/Users/jcroall/PycharmProjects/blackduck-scan-action/blackduck-rapid-scan-to-github.py"
-url = ""
-token = ""
-project = ""
-mode = "rapid"
-output = "blackduck-output"
 debug = 0
-fix_pr = False
-upgrade_major = False
-comment_on_pr = False
-sarif = "blackduck-sarif.json"
-incremental_results = False
-upgrade_indirect = False
-skip_detect = False
+# fix_pr = ''
+# upgrade_major = ''
+# comment_on_pr = ''
+# sarif = "blackduck-sarif.json"
+# incremental_results = False
+# upgrade_indirect = False
+# skip_detect = False
 bd = None
 args = None
 
@@ -39,5 +34,5 @@ github_sha = None
 
 
 def printdebug(dstring):
-    if debug:
+    if False:
         print(dstring)

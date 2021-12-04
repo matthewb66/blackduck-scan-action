@@ -3,7 +3,7 @@
 import argparse
 # import json
 import sys
-import os
+# import os
 # import subprocess
 from BlackDuckUtils import Utils as bu
 # import WorkflowUtils
@@ -15,7 +15,7 @@ import scan
 
 if __name__ == "__main__":
 
-    os.chdir('/Users/mbrad/working/duck_hub_ORI')
+    # os.chdir('/Users/mbrad/working/duck_hub_ORI')
     parser = argparse.ArgumentParser(description="Run Black Duck Security Scan")
     parser.add_argument('--debug', default=0, help='set debug level [0-9]')
     parser.add_argument("--url", required=True, type=str, help="Black Duck Hub URL")
@@ -33,6 +33,8 @@ if __name__ == "__main__":
     parser.add_argument("--incremental_results", default="false", type=str, help="Incremental output file")
     parser.add_argument("--upgrade_indirect", default="false", type=str, help="Attempt upgrade for indirect dependencies")
     parser.add_argument('--skip_detect', default=False, action='store_true', help='Skip running of detect')
+    parser.add_argument("--detect_opts", type=str, default="false", help="Passthrough options to Detect")
+
 
     globals.args = parser.parse_args()
 
@@ -72,7 +74,7 @@ if __name__ == "__main__":
 
     if globals.args.trustcert.lower() == 'true':
         globals.args.trustcert = True
-        runargs.append("--blackduck.trust.cert")
+        runargs.append("--blackduck.trust.cert=true")
     else:
         globals.args.trustcert = False
 
@@ -81,7 +83,7 @@ if __name__ == "__main__":
     runargs.extend(["--blackduck.url=" + globals.args.url, "--blackduck.api.token=" + globals.args.token,
                     "--detect.blackduck.scan.mode=" + globals.args.mode,
                     # "--detect.detector.buildless=true",
-                    "--detect.output.path=" + globals.args.output, "--detect.cleanup="+"false"])
+                    "--detect.output.path=" + globals.args.output, "--detect.cleanup=false"])
 
     if (globals.args.project is not None):
         runargs.extend(["--detect.project.name=" + globals.args.project])
@@ -91,7 +93,9 @@ if __name__ == "__main__":
 
     print(f"INFO: Running Black Duck detect with the following options: {runargs}")
 
-    pvurl, projname, vername, detect_return_code = bu.run_detect(globals.detect_jar, runargs)
+    if globals.args.detect_opts is not None and globals.args.detect_opts != '':
+        runargs.append(globals.args.detect_opts)
+    pvurl, projname, vername, detect_return_code = bu.run_detect(globals.detect_jar, runargs, True)
 
     print(f"INFO: Done with Black Duck run, return value {detect_return_code}")
     if (detect_return_code > 0 and detect_return_code != 3):
@@ -106,4 +110,4 @@ if __name__ == "__main__":
                 verify=globals.args.trustcert,  # TLS certificate verification
                 timeout=300)
 
-    scan.main_scan_process()
+    scan.main_process()

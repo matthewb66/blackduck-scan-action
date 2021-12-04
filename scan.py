@@ -4,20 +4,15 @@ import hashlib
 import json
 # import os
 # import random
-import re
 # import shutil
 import sys
 # import zipfile
 import aiohttp
 import asyncio
 
-import networkx as nx
 from BlackDuckUtils import BlackDuckOutput as bo
 from BlackDuckUtils import Utils as bu
 from BlackDuckUtils import bdio as bdio
-# from BlackDuckUtils import globals as bdglobals
-from BlackDuckUtils import MavenUtils
-from BlackDuckUtils import NpmUtils
 
 # from blackduck import Client
 import globals
@@ -31,76 +26,62 @@ import github_workflow
 #    sys.exit(1)
 
 
-def process_bd_scan():
-
-    project_baseline_name, project_baseline_version, globals.detected_package_files = \
-        bo.get_blackduck_status(globals.args.output)
-
-    print(f"INFO: Running for project '{project_baseline_name}' version '{project_baseline_version}'")
-
-    # Look up baseline data
-    pvurl = bu.get_projver(globals.bd, project_baseline_name, project_baseline_version)
-    globals.baseline_comp_cache = dict()
-    if globals.args.incremental_results:
-        if pvurl == '':
-            print(f"WARN: Unable to find project '{project_baseline_name}' \
-version '{project_baseline_version}' - will not present incremental results")
-        else:
-            globals.printdebug(f"DEBUG: Project Version URL: {pvurl}")
-            baseline_comps = bu.get_comps(globals.bd, pvurl)
-            # if (globals.debug): print(f"DEBUG: Baseline components=" + json.dumps(baseline_comps, indent=4))
-            # sys.exit(1)
-            # Can't cache the component Id / external id very easily here as it's not top-level,
-            # and may have multiple origins
-            for comp in baseline_comps:
-                if not comp['componentName'] in globals.baseline_comp_cache:
-                    globals.baseline_comp_cache[comp['componentName']] = dict()
-                # if (baseline_comp_cache[comp['componentName']] == None): baseline_comp_cache[comp['componentName']] = dict()
-                globals.baseline_comp_cache[comp['componentName']][comp['componentVersionName']] = 1
-                # baseline_comp_cache[comp['componentName']] = comp['componentVersionName']
-            globals.printdebug(f"DEBUG: Baseline component cache=" + json.dumps(globals.baseline_comp_cache, indent=4))
-            globals.printdebug(f"DEBUG: Generated baseline component cache")
-
-    globals.bdio_graph, globals.bdio_projects = bdio.get_bdio_dependency_graph(globals.args.output)
-
-    if len(globals.bdio_projects) == 0:
-        print("ERROR: Unable to find base project in BDIO file")
-        sys.exit(1)
-
-    globals.rapid_scan_data = bo.get_rapid_scan_results(globals.args.output, globals.bd)
-
-    return pvurl
-
-
-async def async_main(compitems, bd):
+async def async_main(compidlist, bd):
     token = bd.session.auth.bearer_token
 
     async with aiohttp.ClientSession() as session:
-        compid_tasks = []
+        compdata_tasks = []
 
-        for comp in compitems:
-            compid_task = asyncio.ensure_future(async_get_compids(session, bd.base_url, comp, token))
-            compid_tasks.append(compid_task)
+        for compid in compidlist:
+            compdata_task = asyncio.ensure_future(async_get_compdata(session, bd.base_url, compid, token))
+            compdata_tasks.append(compdata_task)
 
         print('Getting componentids ... ')
-        all_compids = dict(await asyncio.gather(*compid_tasks))
-        await asyncio.sleep(0.250)
+        # print(f'compidlist: {compidlist}')
+        all_compdata = dict(await asyncio.gather(*compdata_tasks))
+        await asyncio.sleep(0.25)
 
     async with aiohttp.ClientSession() as session:
         upgradeguidance_tasks = []
+        versions_tasks = []
 
-        for comp in compitems:
-            upgradeguidance_task = asyncio.ensure_future(async_get_guidance(session, comp, all_compids, token))
+        for compid in compidlist:
+            upgradeguidance_task = asyncio.ensure_future(async_get_guidance(session, compid, all_compdata, token))
             upgradeguidance_tasks.append(upgradeguidance_task)
 
-        print('Getting component data ... ')
+            versions_task = asyncio.ensure_future(async_get_versions(session, compid, all_compdata, token))
+            versions_tasks.append(versions_task)
+
+        print('Getting component versions & upgrade guidance ... ')
         all_upgradeguidances = dict(await asyncio.gather(*upgradeguidance_tasks))
-        await asyncio.sleep(0.250)
+        all_versions = dict(await asyncio.gather(*versions_tasks))
+        await asyncio.sleep(0.25)
 
-    return all_upgradeguidances
+    async with aiohttp.ClientSession() as session:
+        origins_tasks = []
+
+        for compid in compidlist:
+            tempcompid = compid.replace(':', '@').replace('/', '@')
+            arr = tempcompid.split('@')
+            if compid not in all_versions.keys():
+                continue
+            # print(f'DEBUG {compid} - {len(all_versions[compid])}')
+            for vers, versurl in all_versions[compid]:
+                if vers == arr[2]:
+                    break
+                origins_task = asyncio.ensure_future(async_get_origins(session, compid, all_compdata,
+                                                                       vers, versurl, token))
+                origins_tasks.append(origins_task)
+
+        print('Getting version origins ... ')
+        all_origins = dict(await asyncio.gather(*origins_tasks))
+        await asyncio.sleep(0.25)
+
+    # return all_upgradeguidances, all_versions
+    return all_upgradeguidances, all_versions, all_origins
 
 
-async def async_get_compids(session, baseurl, comp, token):
+async def async_get_compdata(session, baseurl, compid, token):
     # if 'componentIdentifier' not in comp:
     #     return None, None
     #
@@ -115,22 +96,63 @@ async def async_get_compids(session, baseurl, comp, token):
     }
 
     params = {
-        'q': [comp['componentIdentifier']]
+        # 'q': [comp['componentIdentifier']],
+        'q': [compid],
     }
     # search_results = bd.get_items('/api/components', params=params)
     async with session.get(baseurl + '/api/components', headers=headers, params=params, ssl=ssl) as resp:
         found_comps = await resp.json()
 
-    print(found_comps['items'])
-
-    if len(found_comps['items']) != 1:
+    # print('----')
+    # print(baseurl + '/api/components?q=' + compid)
+    # print(found_comps)
+    if 'items' not in found_comps or len(found_comps['items']) != 1:
         return None, None
+
     found = found_comps['items'][0]
 
-    return comp['componentIdentifier'], found['version'] + '/upgrade-guidance'
+    # return comp['componentIdentifier'], [found['variant'] + '/upgrade-guidance', found['component'] + '/versions']
+    return compid, [found['variant'] + '/upgrade-guidance', found['component'] + '/versions']
 
 
-async def async_get_guidance(session, comp, compids, token):
+async def async_get_versions(session, compid, compdata, token):
+    if compid in compdata:
+        gurl = compdata[compid][1]
+    else:
+        return None, None
+
+    if not globals.args.trustcert:
+        ssl = False
+    else:
+        ssl = None
+
+    # print(f'GETTING VERSION: {compid}')
+    headers = {
+        'accept': "application/vnd.blackducksoftware.component-detail-4+json",
+        'Authorization': f'Bearer {token}',
+    }
+
+    params = {
+        'limit': 500,
+        'sort': 'releasedOn'
+    }
+
+    async with session.get(gurl, headers=headers, params=params, ssl=ssl) as resp:
+        res = await resp.json()
+
+    versions_list = []
+    for version in res['items'][::-1]:
+        item = [version['versionName'], version['_meta']['href']]
+        versions_list.append(item)
+
+    # print(comp['componentName'])
+    # print(gurl)
+    # print(versions_list)
+    #
+    return compid, versions_list
+
+
+async def async_get_guidance(session, compid, compdata, token):
     if not globals.args.trustcert:
         ssl = False
     else:
@@ -140,16 +162,20 @@ async def async_get_guidance(session, comp, compids, token):
         'accept': "application/vnd.blackducksoftware.component-detail-5+json",
         'Authorization': f'Bearer {token}',
     }
-    if 'componentIdentifier' in comp and comp['componentIdentifier'] in compids:
-        gurl = compids[comp['componentIdentifier']]
+    # if 'componentIdentifier' in comp and comp['componentIdentifier'] in compdata:
+    #     gurl = compdata[comp['componentIdentifier']][0]
+    # else:
+    #     return None, None
+    if compid in compdata.keys():
+        gurl = compdata[compid][0]
     else:
         return None, None
 
-    print(gurl)
+    # print(gurl)
     async with session.get(gurl, headers=headers, ssl=ssl) as resp:
         component_upgrade_data = await resp.json()
 
-    print(component_upgrade_data)
+    globals.printdebug(component_upgrade_data)
     if "longTerm" in component_upgrade_data.keys():
         longTerm = component_upgrade_data['longTerm']['versionName']
     else:
@@ -159,110 +185,215 @@ async def async_get_guidance(session, comp, compids, token):
         shortTerm = component_upgrade_data['shortTerm']['versionName']
     else:
         shortTerm = ''
+    # print(f"Comp = {comp['componentName']}/{comp['versionName']} - Short = {shortTerm} Long = {longTerm}")
 
-    return comp['componentIdentifier'], [shortTerm, longTerm]
+    if shortTerm == longTerm:
+        longTerm = ''
+    return compid, [shortTerm, longTerm]
 
 
-def process_rapid_scan_results():
-    upgrade_dict = asyncio.run(async_main(globals.rapid_scan_data['items'], globals.bd))
+async def async_get_origins(session, compid, compdata, ver, verurl, token):
+    if not globals.args.trustcert:
+        ssl = False
+    else:
+        ssl = None
 
-    for item in globals.rapid_scan_data['items']:
-        globals.printdebug(f"DEBUG: Component: {item['componentIdentifier']}")
-        globals.printdebug(item)
+    headers = {
+        'accept': "application/vnd.blackducksoftware.component-detail-5+json",
+        'Authorization': f'Bearer {token}',
+    }
+    # if 'componentIdentifier' in comp and comp['componentIdentifier'] in compdata:
+    #     gurl = compdata[comp['componentIdentifier']][0]
+    # else:
+    #     return None, None
 
-        comp_ns, comp_name, comp_version = bu.parse_component_id(item['componentIdentifier'])
+    async with session.get(verurl + '/origins', headers=headers, ssl=ssl) as resp:
+        origins = await resp.json()
 
-        # If comparing to baseline, look up in cache and continue if already exists
-        if globals.args.incremental_results and item['componentName'] in globals.baseline_comp_cache:
-            if (item['versionName'] in globals.baseline_comp_cache[item['componentName']] and
-                    globals.baseline_comp_cache[item['componentName']][item['versionName']] == 1):
-                globals.printdebug(f"DEBUG:   Skipping component {item['componentName']} \
-version {item['versionName']} because it was already seen in baseline")
-                continue
-            else:
-                globals.printdebug(f"DEBUG:   Including component {item['componentName']} \
-version {item['versionName']} because it was not seen in baseline")
+    # print('get_origins:')
+    # print(verurl)
+    # print(json.dumps(origins, indent=4))
 
-        # Is this a direct dependency?
-        dependency_type = "Direct"
+    return compid, origins['items']
 
-        # Track the root dependencies
-        dependency_paths = []
-        direct_ancestors = dict()
 
-        globals.printdebug(f"DEBUG: Looking for {item['componentIdentifier']}")
-        globals.printdebug(f"DEBUG: comp_ns={comp_ns} comp_name={comp_name} comp_version={comp_version}")
+def find_upgrade_versions(dirdep, versions_list, origin_dict, guidance_upgrades):
+    # Clean & check the dependency string
+    moddep = dirdep.replace(':', '@').replace('/', '@')
+    arr = moddep.split('@')
+    if len(arr) != 3:
+        return
+    origin = arr[0]
+    component_name = arr[1]
+    current_version = arr[2]
+    n_ver = bu.normalise_version(current_version)
+    if n_ver is None:
+        return
 
-        # Matching in the BDIO requires an http: prefix
-        if comp_ns == "npmjs":
-            node_http_name = NpmUtils.convert_to_bdio(item['componentIdentifier'])
-        elif comp_ns == "maven":
-            node_http_name = MavenUtils.convert_to_bdio(item['componentIdentifier'])
+    future_vers = []
+    if dirdep in origin_dict.keys():
+        #
+        # Find future versions from the same origin
+        for o_ver in origin_dict[dirdep]:
+            if 'originName' in o_ver and o_ver['originName'] == origin:
+                # Find this version in versions_list
+                for v_ver, v_url in versions_list:
+                    if v_ver == o_ver['versionName']:
+                        future_vers.append([v_ver, v_url])
+                        break
+    # print(f"Future versions within same origin = {len(future_vers)}")
+
+    ver_within_major_range = ''
+    ver_next_major_range = ''
+    ver_latest = ''
+    for version, vurl in future_vers:
+        new_ver = bu.normalise_version(version)
+        if new_ver is None:
+            continue
+
+        if ver_within_major_range == '' and new_ver.major == n_ver.major and new_ver.minor > n_ver.minor and \
+                n_ver != new_ver:
+            ver_within_major_range = version
+        elif ver_next_major_range == '' and new_ver.major == n_ver.major + 1:
+            ver_next_major_range = version
+        elif ver_latest == '' and new_ver != n_ver:
+            ver_latest = version
+
+    upgrade_versions = []
+    for str in [ver_within_major_range, ver_next_major_range, ver_latest]:
+        if str != '':
+            upgrade_versions.append(str)
+
+    return upgrade_versions
+
+
+def process_upgrades(deplist, version_dict, guidance_dict, origin_dict):
+    #
+    # Check if BD upgrade guidance exists for this component
+    upgrade_dict = {}
+    for dep in deplist:
+        guidance_upgrades = []
+        for ind in [0, 1]:
+            ver = guidance_dict[dep][ind]
+            if ver != '':
+                tempver = bu.normalise_version(ver)
+                if tempver is not None:
+                    guidance_upgrades.append(ver)
+
+        if len(guidance_upgrades) > 0:
+            # print(f'BD UPGRADE GUIDANCE for {dep} - {guidance_upgrades}')
+            upgrade_dict[dep] = guidance_upgrades
         else:
-            print(f"ERROR: Domain '{comp_ns}' not supported yet")
-            sys.exit(1)
+            upgrade_dict[dep] = find_upgrade_versions(dep, version_dict[dep], origin_dict, guidance_upgrades)
+    return upgrade_dict
 
-        globals.printdebug(f"DEBUG: Looking for {node_http_name}")
-        ans = nx.ancestors(globals.bdio_graph, node_http_name)
-        ans_list = list(ans)
-        globals.printdebug(f"DEBUG:   Ancestors are: {ans_list}")
-        pred = nx.DiGraph.predecessors(globals.bdio_graph, node_http_name)
-        pred_list = list(pred)
-        globals.printdebug(f"DEBUG:   Predecessors are: {ans_list}")
-        if len(ans_list) != 1:
-            dependency_type = "Transitive"
 
-            # If this is a transitive dependency, what are the flows?
-            for proj in globals.bdio_projects:
-                dep_paths = nx.all_simple_paths(globals.bdio_graph, source=proj, target=node_http_name)
-                globals.printdebug(f"DEBUG: Paths to '{node_http_name}'")
-                paths = []
-                for path in dep_paths:
-                    # First generate a string for easy output and reading
-                    path_modified = path
-                    path_modified.pop(0)
-                    # Subtract http:<domain>/
-                    path_modified_trimmed = [re.sub(r'http:.*?/', '', path_name) for path_name in path_modified]
-                    # Change / to @
-                    path_modified_trimmed = [re.sub(r'/', '@', path_name) for path_name in path_modified_trimmed]
-                    pathstr = " -> ".join(path_modified_trimmed)
-                    globals.printdebug(f"DEBUG:   path={pathstr}")
-                    dependency_paths.append(pathstr)
-                    if globals.args.upgrade_indirect:
-                        # Then log the direct dependencies directly
-                        direct_dep = path_modified_trimmed[0]
-                        direct_name = direct_dep.split('@')[0]
-                        direct_version = direct_dep.split('@')[1]
+def test_upgrades(upgrade_dict, deplist, pm):
+    bd_connect_args = [
+        f'--blackduck.url={globals.args.url}',
+        f'--blackduck.api.token={globals.args.token}',
+    ]
+    if globals.args.trustcert:
+        bd_connect_args.append(f'--blackduck.trust.cert=true')
+    # print(deplist)
+    good_upgrades_dict = bu.attempt_indirect_upgrade(pm, deplist, upgrade_dict, globals.detect_jar, bd_connect_args,
+                                                globals.bd)
+    return good_upgrades_dict
 
-                        direct_ancestors[direct_dep] = 1
-                        # if (globals.debug): print(f"DEBUG: Direct ancestor: {direct_dep} is of type {node_domain}")
-                        bu.attempt_indirect_upgrade(comp_ns, comp_version, direct_name, direct_version,
-                                                    globals.detect_jar)
+
+def write_sarif():
+    # Prepare SARIF output structures
+    run = dict()
+    run['results'] = globals.results
+    runs = [run]
+
+    tool = dict()
+    driver = dict()
+    driver['name'] = "Synopsys Black Duck"
+    driver['organization'] = "Synopsys"
+    driver['rules'] = globals.tool_rules
+    tool['driver'] = driver
+    run['tool'] = tool
+
+    code_security_scan_report = dict()
+    code_security_scan_report['runs'] = runs
+    code_security_scan_report['$schema'] = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json"
+    code_security_scan_report['version'] = "2.1.0"
+    code_security_scan_report['runs'] = runs
+
+    globals.printdebug("DEBUG: SARIF Data structure=" + json.dumps(code_security_scan_report, indent=4))
+    try:
+        with open(globals.args.sarif, "w") as fp:
+            json.dump(code_security_scan_report, fp, indent=4)
+    except:
+        print(f"ERROR: Unable to write to SARIF output file '{globals.args.sarif}'")
+        sys.exit(1)
+
+
+def process_bd_scan():
+    project_baseline_name, project_baseline_version, globals.detected_package_files = \
+        bo.get_blackduck_status(globals.args.output)
+
+    # print(f"INFO: Running for project '{project_baseline_name}' version '{project_baseline_version}'")
+
+    # Look up baseline data
+    pvurl = bu.get_projver(globals.bd, project_baseline_name, project_baseline_version)
+    baseline_comp_cache = dict()
+    if globals.args.incremental_results:
+        if pvurl == '':
+            print(f"WARN: Unable to find project '{project_baseline_name}' \
+version '{project_baseline_version}' - will not present incremental results")
+        else:
+            globals.printdebug(f"DEBUG: Project Version URL: {pvurl}")
+            baseline_comps = bu.get_comps(globals.bd, pvurl)
+            # if (globals.debug): print(f"DEBUG: Baseline components=" + json.dumps(baseline_comps, indent=4))
+            # sys.exit(1)
+            # Can't cache the component Id / external id very easily here as it's not top-level,
+            # and may have multiple origins
+            for comp in baseline_comps:
+                if not comp['componentName'] in baseline_comp_cache:
+                    baseline_comp_cache[comp['componentName']] = dict()
+                # if (baseline_comp_cache[comp['componentName']] == None): baseline_comp_cache[comp['componentName']] = dict()
+                baseline_comp_cache[comp['componentName']][comp['componentVersionName']] = 1
+                # baseline_comp_cache[comp['componentName']] = comp['componentVersionName']
+            globals.printdebug(f"DEBUG: Baseline component cache=" + json.dumps(baseline_comp_cache, indent=4))
+            globals.printdebug(f"DEBUG: Generated baseline component cache")
+
+    bdio_graph, bdio_projects = bdio.get_bdio_dependency_graph(globals.args.output)
+
+    if len(bdio_projects) == 0:
+        print("ERROR: Unable to find base project in BDIO file")
+        sys.exit(1)
+
+    rapid_scan_data, dep_dict, direct_deps_to_upgrade, pm = bu.process_scan(
+        globals.args.output, globals.bd, baseline_comp_cache,
+        globals.args.incremental_results, globals.args.upgrade_indirect)
+
+    return rapid_scan_data, dep_dict, direct_deps_to_upgrade, pm
+
+
+def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict):
+    for compid in upgrade_dict.keys():
+        #
+        # Loop again to create Sarif & find upgrades for direct deps
 
         # Get component upgrade advice
         # shortTerm, longTerm = bu.get_upgrade_guidance(globals.bd, item['componentIdentifier'])
-        shortTerm, longTerm = upgrade_dict[item['componentIdentifier']]
-
-        upgrade_version = None
-        if globals.args.upgrade_major:
-            if longTerm is not None and longTerm != '':
-                upgrade_version = longTerm
+        upgrades_list = upgrade_dict[compid]
+        if len(upgrades_list) > 0:
+            upgrade_ver = upgrades_list[0]
         else:
-            if shortTerm is not None and shortTerm != '':
-                upgrade_version = shortTerm
+            upgrade_ver = None
 
-        globals.printdebug(f"DEUBG: Detected package files={globals.detected_package_files} item={item}")
-        package_file, package_line = bu.detect_package_file(globals.detected_package_files,
-                                                            item['componentIdentifier'], item['componentName'])
-
-        globals.printdebug(f"DEBUG: package file for {item['componentIdentifier']} is {package_file} on line {package_line} type is {dependency_type}")
+        globals.printdebug(f"DEBUG: Detected package files={globals.detected_package_files} item={compid}")
+        package_file, package_line = bu.detect_package_file(globals.detected_package_files, compid)
 
         fix_pr_node = dict()
-        if dependency_type == "Direct" and upgrade_version is not None:
-            fix_pr_node['componentName'] = comp_name
-            fix_pr_node['versionFrom'] = comp_version
-            fix_pr_node['versionTo'] = upgrade_version
-            fix_pr_node['ns'] = comp_ns
+        if dep_dict[compid]['deptype'] == "Direct" and upgrade_ver is not None:
+            fix_pr_node['componentName'] = dep_dict[compid]['compname']
+            fix_pr_node['versionFrom'] = dep_dict[compid]['compversion']
+            fix_pr_node['versionTo'] = upgrade_ver
+            fix_pr_node['ns'] = dep_dict[compid]['compns']
             fix_pr_node['filename'] = bu.remove_cwd_from_filename(package_file)
             fix_pr_node['comments'] = []
             fix_pr_node['comments_markdown'] = ["| ID | Severity | Description | Vulnerable version | Upgrade to |", "| --- | --- | --- | --- | --- |"]
@@ -270,33 +401,41 @@ version {item['versionName']} because it was not seen in baseline")
 
         # Loop through policy violations and append to SARIF output data
 
-        globals.printdebug(f"DEBUG: Loop through policy violations")
-        globals.printdebug(item['policyViolationVulnerabilities'])
+        # Find direct dep within the dep_dict to determine the vulnerable children
+        children = []
+        for alldep in dep_dict.keys():
+            if compid in dep_dict[alldep]['directparents']:
+                children.append(alldep)
 
-        for vuln in item['policyViolationVulnerabilities']:
+        for child in children:
+            # Find child in rapidscan data
+            for rscanitem in rapid_scan_data['items']:
+
+            compid['policyViolationVulnerabilities']:
+            dep_vulnerable = True
             message_markdown_footer = ''
-            if upgrade_version is not None:
-                message = f"* {vuln['name']} - {vuln['vulnSeverity']} severity vulnerability violates policy '{vuln['violatingPolicies'][0]['policyName']}': *{vuln['description']}* Recommended to upgrade to version {upgrade_version}. {dependency_type} dependency."
-                message_markdown = f"| {vuln['name']} | {vuln['vulnSeverity']} | {vuln['description']} | {comp_version} | {upgrade_version} | "
-                comment_on_pr = f"| {vuln['name']} | {dependency_type} | {vuln['name']} |  {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {vuln['description']} | {comp_version} | {upgrade_version} |"
+            if upgrade_ver is not None:
+                message = f"* {vuln['name']} - {vuln['vulnSeverity']} severity vulnerability violates policy '{vuln['violatingPolicies'][0]['policyName']}': *{vuln['description']}* Recommended to upgrade to version {upgrade_ver}. {dep_dict[compid['componentIdentifier']]['deptype']} dependency."
+                message_markdown = f"| {vuln['name']} | {vuln['vulnSeverity']} | {vuln['description']} | {dep_dict[compid['componentIdentifier']]['compversion']} | {upgrade_ver} | "
+                comment_on_pr = f"| {vuln['name']} | {dep_dict[compid['componentIdentifier']]['deptype']} | {vuln['name']} |  {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {vuln['description']} | {dep_dict[compid['componentIdentifier']]['compversion']} | {upgrade_ver} |"
             else:
-                message = f"* {vuln['name']} - {vuln['vulnSeverity']} severity vulnerability violates policy '{vuln['violatingPolicies'][0]['policyName']}': *{vuln['description']}* No upgrade available at this time. {dependency_type} dependency."
-                message_markdown = f"| {vuln['name']} | {vuln['vulnSeverity']} | {vuln['description']} | {comp_version} | {upgrade_version} | "
-                comment_on_pr = f"| {vuln['name']} | {dependency_type} | {vuln['name']} | {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {vuln['description']} | {comp_version} | N/A |"
+                message = f"* {vuln['name']} - {vuln['vulnSeverity']} severity vulnerability violates policy '{vuln['violatingPolicies'][0]['policyName']}': *{vuln['description']}* No upgrade available at this time. {dep_dict[compid['componentIdentifier']]['deptype']} dependency."
+                message_markdown = f"| {vuln['name']} | {vuln['vulnSeverity']} | {vuln['description']} | {dep_dict[compid['componentIdentifier']]['compversion']} | {upgrade_ver} | "
+                comment_on_pr = f"| {vuln['name']} | {dep_dict[compid['componentIdentifier']]['deptype']} | {vuln['name']} | {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {vuln['description']} | {dep_dict[compid['componentIdentifier']]['compversion']} | N/A |"
 
-            if dependency_type == "Direct":
+            if dep_dict[compid['componentIdentifier']]['deptype'] == "Direct":
                 message = message + f"Fix in package file '{bu.remove_cwd_from_filename(package_file)}'"
                 message_markdown_footer = f"**Fix in package file '{bu.remove_cwd_from_filename(package_file)}'**"
             else:
-                if len(dependency_paths) > 0:
-                    message = message + f"Find dependency in {dependency_paths[0]}"
-                    message_markdown_footer = f"**Find dependency in {dependency_paths[0]}**"
+                if len(dep_dict[compid['componentIdentifier']]['paths']) > 0:
+                    message = message + f"Find dependency in {dep_dict[compid['componentIdentifier']]['paths'][0]}"
+                    message_markdown_footer = f"**Find dependency in {dep_dict[compid['componentIdentifier']]['paths'][0]}**"
 
             print("INFO: " + message)
             globals.comment_on_pr_comments.append(comment_on_pr)
 
             # Save message to include in Fix PR
-            if dependency_type == "Direct" and upgrade_version is not None:
+            if dep_dict[compid['componentIdentifier']]['deptype'] == "Direct" and upgrade_ver is not None:
                 fix_pr_node['comments'].append(message)
                 fix_pr_node['comments_markdown'].append(message_markdown)
                 fix_pr_node['comments_markdown_footer'] = message_markdown_footer
@@ -304,7 +443,7 @@ version {item['versionName']} because it was not seen in baseline")
             result = dict()
             result['ruleId'] = vuln['name']
             message = dict()
-            message['text'] = f"This file introduces a {vuln['vulnSeverity']} severity vulnerability in {comp_name}."
+            message['text'] = f"This file introduces a {vuln['vulnSeverity']} severity vulnerability in {dep_dict[compid['componentIdentifier']]['compname']}."
             result['message'] = message
             locations = []
             loc = dict()
@@ -315,23 +454,24 @@ version {item['versionName']} because it was not seen in baseline")
             tool_rule = dict()
             tool_rule['id'] = vuln['name']
             shortDescription = dict()
-            shortDescription['text'] = f"{vuln['name']} - {vuln['vulnSeverity']} severity vulnerability in {comp_name}"
+            shortDescription['text'] = f"{vuln['name']} - {vuln['vulnSeverity']} severity vulnerability in {dep_dict[compid['componentIdentifier']]['compname']}"
             tool_rule['shortDescription'] = shortDescription
             fullDescription = dict()
-            fullDescription['text'] = f"This file introduces a {vuln['vulnSeverity']} severity vulnerability in {comp_name}"
+            fullDescription['text'] = f"This file introduces a {vuln['vulnSeverity']} severity vulnerability in {dep_dict[compid['componentIdentifier']]['compname']}"
             tool_rule['fullDescription'] = fullDescription
             rule_help = dict()
             rule_help['text'] = ""
-            if upgrade_version is not None:
-                rule_help['markdown'] = f"**{vuln['name']}:** *{vuln['description']}*\n\nRecommended to upgrade to version {upgrade_version}.\n\n"
+            if upgrade_ver is not None:
+                rule_help['markdown'] = f"**{vuln['name']}:** *{vuln['description']}*\n\nRecommended to upgrade to version {upgrade_ver}.\n\n"
             else:
                 rule_help['markdown'] = f"**{vuln['name']}:** *{vuln['description']}*\n\nNo upgrade available at this time.\n\n"
 
-            if dependency_type == "Direct":
+            if dep_dict[compid['componentIdentifier']]['deptype'] == "Direct":
                 rule_help['markdown'] = rule_help['markdown'] + f"Fix in package file '{bu.remove_cwd_from_filename(package_file)}'"
             else:
-                if len(dependency_paths) > 0:
-                    rule_help['markdown'] = rule_help['markdown'] + f" Find dependency in **{dependency_paths[0]}**."
+                if len(dep_dict[compid['componentIdentifier']]['paths']) > 0:
+                    rule_help['markdown'] = rule_help['markdown'] + \
+                                            f" Find dependency in **{dep_dict[compid['componentIdentifier']]['paths'][0]}**."
 
             tool_rule['help'] = rule_help
             defaultConfiguration = dict()
@@ -373,48 +513,30 @@ version {item['versionName']} because it was not seen in baseline")
 
             globals.results.append(result)
 
-            if dependency_type == "Direct" and upgrade_version is not None:
-                globals.fix_pr_data[comp_name + "@" + comp_name] = fix_pr_node
+            if dep_dict[compid['componentIdentifier']]['deptype'] == "Direct" and upgrade_ver is not None:
+                globals.fix_pr_data[dep_dict[compid['componentIdentifier']]['compname'] + "@" + \
+                                    dep_dict[compid['componentIdentifier']]['compversion']] = fix_pr_node
                 # fix_pr_data.append(fix_pr_node)
 
 
-def main_scan_process():
+def main_process():
 
-    process_bd_scan()
+    # Process the main Rapid scan
+    rapid_scan_data, dep_dict, direct_deps_to_upgrade, pm = process_bd_scan()
 
-    # Prepare SARIF output structures
-    runs = []
-    run = dict()
+    # Get component data via async calls
+    guidance_dict, version_dict, origin_dict = asyncio.run(async_main(direct_deps_to_upgrade, globals.bd))
 
-    component_match_types = dict()
-    components = dict()
+    # Work out possible upgrades
+    upgrade_dict = process_upgrades(direct_deps_to_upgrade, version_dict, guidance_dict, origin_dict)
 
-    process_rapid_scan_results()
+    # Test upgrades using Detect Rapid scans
+    good_upgrades = test_upgrades(upgrade_dict, direct_deps_to_upgrade, pm)
 
-    run['results'] = globals.results
-    runs.append(run)
+    # Output the data
+    create_scan_outputs(rapid_scan_data, good_upgrades, dep_dict)
 
-    tool = dict()
-    driver = dict()
-    driver['name'] = "Synopsys Black Duck"
-    driver['organization'] = "Synopsys"
-    driver['rules'] = globals.tool_rules
-    tool['driver'] = driver
-    run['tool'] = tool
-
-    code_security_scan_report = dict()
-    code_security_scan_report['runs'] = runs
-    code_security_scan_report['$schema'] = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json"
-    code_security_scan_report['version'] = "2.1.0"
-    code_security_scan_report['runs'] = runs
-
-    globals.printdebug("DEBUG: SARIF Data structure=" + json.dumps(code_security_scan_report, indent=4))
-    try:
-        with open(globals.args.sarif, "w") as fp:
-            json.dump(code_security_scan_report, fp, indent=4)
-    except:
-        print(f"ERROR: Unable to write to SARIF output file '{globals.args.sarif}'")
-        sys.exit(1)
+    write_sarif()
 
     # Optionally generate Fix PR
     if globals.args.fix_pr and len(globals.fix_pr_data.values()) > 0:
@@ -427,8 +549,3 @@ def main_scan_process():
     if len(globals.comment_on_pr_comments) > 0:
         github_workflow.github_comment_on_pr_comments()
 
-    #     print(f"INFO: Vulnerable components found, returning exit code 1")
-    #     sys.exit(1)
-    # else:
-    #     print(f"INFO: No new components found, nothing to report")
-    #     sys.exit(0)
