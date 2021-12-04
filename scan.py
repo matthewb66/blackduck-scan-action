@@ -1,6 +1,6 @@
 # import argparse
 # import glob
-import hashlib
+# import hashlib
 import json
 # import os
 # import random
@@ -296,9 +296,9 @@ def test_upgrades(upgrade_dict, deplist, pm):
     if globals.args.trustcert:
         bd_connect_args.append(f'--blackduck.trust.cert=true')
     # print(deplist)
-    good_upgrades_dict = bu.attempt_indirect_upgrade(pm, deplist, upgrade_dict, globals.detect_jar, bd_connect_args,
+    upgrade_count, good_upgrades_dict = bu.attempt_indirect_upgrade(pm, deplist, upgrade_dict, globals.detect_jar, bd_connect_args,
                                                 globals.bd)
-    return good_upgrades_dict
+    return upgrade_count, good_upgrades_dict
 
 
 def write_sarif():
@@ -374,34 +374,28 @@ version '{project_baseline_version}' - will not present incremental results")
 
 def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict):
     for compid in upgrade_dict.keys():
-        #
-        # Loop again to create Sarif & find upgrades for direct deps
-
-        # Get component upgrade advice
-        # shortTerm, longTerm = bu.get_upgrade_guidance(globals.bd, item['componentIdentifier'])
+        # Loop the list of direct deps
         upgrades_list = upgrade_dict[compid]
         if len(upgrades_list) > 0:
             upgrade_ver = upgrades_list[0]
         else:
             upgrade_ver = None
 
-        globals.printdebug(f"DEBUG: Detected package files={globals.detected_package_files} item={compid}")
         package_file, package_line = bu.detect_package_file(globals.detected_package_files, compid)
 
+        ns, name, ver = bu.parse_component_id(compid)
         fix_pr_node = dict()
-        if dep_dict[compid]['deptype'] == "Direct" and upgrade_ver is not None:
-            fix_pr_node['componentName'] = dep_dict[compid]['compname']
-            fix_pr_node['versionFrom'] = dep_dict[compid]['compversion']
+        if upgrade_ver is not None:
+            fix_pr_node['componentName'] = name
+            fix_pr_node['versionFrom'] = ver
             fix_pr_node['versionTo'] = upgrade_ver
-            fix_pr_node['ns'] = dep_dict[compid]['compns']
+            fix_pr_node['ns'] = ns
             fix_pr_node['filename'] = bu.remove_cwd_from_filename(package_file)
             fix_pr_node['comments'] = []
-            fix_pr_node['comments_markdown'] = ["| ID | Severity | Description | Vulnerable version | Upgrade to |", "| --- | --- | --- | --- | --- |"]
+            fix_pr_node['comments_markdown'] = ["| Child Component | ID | Severity | Description | Vulnerable version \
+| Upgrade to |", "| --- | --- | --- | --- | --- |"]
             fix_pr_node['comments_markdown_footer'] = ""
 
-        # Loop through policy violations and append to SARIF output data
-
-        # Find direct dep within the dep_dict to determine the vulnerable children
         children = []
         for alldep in dep_dict.keys():
             if compid in dep_dict[alldep]['directparents']:
@@ -409,114 +403,114 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict):
 
         for child in children:
             # Find child in rapidscan data
+            child_ns, child_name, child_ver = bu.parse_component_id(child)
             for rscanitem in rapid_scan_data['items']:
-
-            compid['policyViolationVulnerabilities']:
-            dep_vulnerable = True
-            message_markdown_footer = ''
-            if upgrade_ver is not None:
-                message = f"* {vuln['name']} - {vuln['vulnSeverity']} severity vulnerability violates policy '{vuln['violatingPolicies'][0]['policyName']}': *{vuln['description']}* Recommended to upgrade to version {upgrade_ver}. {dep_dict[compid['componentIdentifier']]['deptype']} dependency."
-                message_markdown = f"| {vuln['name']} | {vuln['vulnSeverity']} | {vuln['description']} | {dep_dict[compid['componentIdentifier']]['compversion']} | {upgrade_ver} | "
-                comment_on_pr = f"| {vuln['name']} | {dep_dict[compid['componentIdentifier']]['deptype']} | {vuln['name']} |  {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {vuln['description']} | {dep_dict[compid['componentIdentifier']]['compversion']} | {upgrade_ver} |"
-            else:
-                message = f"* {vuln['name']} - {vuln['vulnSeverity']} severity vulnerability violates policy '{vuln['violatingPolicies'][0]['policyName']}': *{vuln['description']}* No upgrade available at this time. {dep_dict[compid['componentIdentifier']]['deptype']} dependency."
-                message_markdown = f"| {vuln['name']} | {vuln['vulnSeverity']} | {vuln['description']} | {dep_dict[compid['componentIdentifier']]['compversion']} | {upgrade_ver} | "
-                comment_on_pr = f"| {vuln['name']} | {dep_dict[compid['componentIdentifier']]['deptype']} | {vuln['name']} | {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {vuln['description']} | {dep_dict[compid['componentIdentifier']]['compversion']} | N/A |"
-
-            if dep_dict[compid['componentIdentifier']]['deptype'] == "Direct":
-                message = message + f"Fix in package file '{bu.remove_cwd_from_filename(package_file)}'"
-                message_markdown_footer = f"**Fix in package file '{bu.remove_cwd_from_filename(package_file)}'**"
-            else:
-                if len(dep_dict[compid['componentIdentifier']]['paths']) > 0:
-                    message = message + f"Find dependency in {dep_dict[compid['componentIdentifier']]['paths'][0]}"
-                    message_markdown_footer = f"**Find dependency in {dep_dict[compid['componentIdentifier']]['paths'][0]}**"
-
-            print("INFO: " + message)
+                if rscanitem['componentIdentifier'] == child:
+                    for vuln in rscanitem['policyViolationVulnerabilities']:
+                        message_markdown_footer = ''
+                        if upgrade_ver is not None:
+                            message = f"* {vuln['name']} - {vuln['vulnSeverity']} severity vulnerability violates policy '{vuln['violatingPolicies'][0]['policyName']}': *{vuln['description']}* Recommended to upgrade to version {upgrade_ver}."
+                            message_markdown = f"| {vuln['name']} | {vuln['vulnSeverity']} | {vuln['description']} | {child_ver} | {upgrade_ver} | "
+                            comment_on_pr = f"| {vuln['name']} | {child} | {vuln['name']} |  {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {vuln['description']} | {child_ver} | {upgrade_ver} |"
+                        else:
+                            message = f"* {vuln['name']} - {vuln['vulnSeverity']} severity vulnerability violates policy '{vuln['violatingPolicies'][0]['policyName']}': *{vuln['description']}* No upgrade available at this time."
+                            message_markdown = f"| {vuln['name']} | {vuln['vulnSeverity']} | {vuln['description']} | {child_ver} | {upgrade_ver} | "
+                            comment_on_pr = f"| {vuln['name']} | {child} | {vuln['name']} | {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {vuln['description']} | {child_ver} | N/A |"
+        #
+        #     if dep_dict[compid['componentIdentifier']]['deptype'] == "Direct":
+                        message = message + f"Fix in package file '{bu.remove_cwd_from_filename(package_file)}'"
+                        message_markdown_footer = f"**Fix in package file '{bu.remove_cwd_from_filename(package_file)}'**"
+        #     else:
+        #         if len(dep_dict[compid['componentIdentifier']]['paths']) > 0:
+        #             message = message + f"Find dependency in {dep_dict[compid['componentIdentifier']]['paths'][0]}"
+        #             message_markdown_footer = f"**Find dependency in {dep_dict[compid['componentIdentifier']]['paths'][0]}**"
+        #
+        #     print("INFO: " + message)
             globals.comment_on_pr_comments.append(comment_on_pr)
-
-            # Save message to include in Fix PR
-            if dep_dict[compid['componentIdentifier']]['deptype'] == "Direct" and upgrade_ver is not None:
+        #
+        #     # Save message to include in Fix PR
+            if upgrade_ver is not None:
                 fix_pr_node['comments'].append(message)
                 fix_pr_node['comments_markdown'].append(message_markdown)
                 fix_pr_node['comments_markdown_footer'] = message_markdown_footer
-
-            result = dict()
-            result['ruleId'] = vuln['name']
-            message = dict()
-            message['text'] = f"This file introduces a {vuln['vulnSeverity']} severity vulnerability in {dep_dict[compid['componentIdentifier']]['compname']}."
-            result['message'] = message
-            locations = []
-            loc = dict()
-            loc['file'] = bu.remove_cwd_from_filename(package_file)
-            # TODO: Can we reference the line number in the future, using project inspector?
-            loc['line'] = package_line
-
-            tool_rule = dict()
-            tool_rule['id'] = vuln['name']
-            shortDescription = dict()
-            shortDescription['text'] = f"{vuln['name']} - {vuln['vulnSeverity']} severity vulnerability in {dep_dict[compid['componentIdentifier']]['compname']}"
-            tool_rule['shortDescription'] = shortDescription
-            fullDescription = dict()
-            fullDescription['text'] = f"This file introduces a {vuln['vulnSeverity']} severity vulnerability in {dep_dict[compid['componentIdentifier']]['compname']}"
-            tool_rule['fullDescription'] = fullDescription
-            rule_help = dict()
-            rule_help['text'] = ""
-            if upgrade_ver is not None:
-                rule_help['markdown'] = f"**{vuln['name']}:** *{vuln['description']}*\n\nRecommended to upgrade to version {upgrade_ver}.\n\n"
-            else:
-                rule_help['markdown'] = f"**{vuln['name']}:** *{vuln['description']}*\n\nNo upgrade available at this time.\n\n"
-
-            if dep_dict[compid['componentIdentifier']]['deptype'] == "Direct":
-                rule_help['markdown'] = rule_help['markdown'] + f"Fix in package file '{bu.remove_cwd_from_filename(package_file)}'"
-            else:
-                if len(dep_dict[compid['componentIdentifier']]['paths']) > 0:
-                    rule_help['markdown'] = rule_help['markdown'] + \
-                                            f" Find dependency in **{dep_dict[compid['componentIdentifier']]['paths'][0]}**."
-
-            tool_rule['help'] = rule_help
-            defaultConfiguration = dict()
-
-            if vuln['vulnSeverity'] == "CRITICAL" or vuln['vulnSeverity'] == "HIGH":
-                defaultConfiguration['level'] = "error"
-            elif vuln['vulnSeverity'] == "MEDIUM":
-                defaultConfiguration['level'] = "warning"
-            else:
-                defaultConfiguration['level'] = "note"
-
-            tool_rule['defaultConfiguration'] = defaultConfiguration
-            properties = dict()
-            properties['tags'] = ["security"]
-            properties['security-severity'] = str(vuln['overallScore'])
-            tool_rule['properties'] = properties
-            globals.tool_rules.append(tool_rule)
-
-            location = dict()
-            physicalLocation = dict()
-            artifactLocation = dict()
-            artifactLocation['uri'] = loc['file']
-            physicalLocation['artifactLocation'] = artifactLocation
-            region = dict()
-            region['startLine'] = loc['line']
-            physicalLocation['region'] = region
-            location['physicalLocation'] = physicalLocation
-            locations.append(location)
-            result['locations'] = locations
-
-            # Calculate fingerprint using simply the CVE/BDSA - the scope is the project in GitHub, so this should be fairly accurate for identifying a unique issue.
-            # Guidance from https://docs.github.com/en/code-security/code-scanning/integrating-with-code-scanning/sarif-support-for-code-scanning#preventing-duplicate-alerts-using-fingerprints
-            # and https://docs.oasis-open.org/sarif/sarif/v2.1.0/cs01/sarif-v2.1.0-cs01.html#_Toc16012611
-            # TODO Should this just leave it alone and let GitHub calculate it?
-            partialFingerprints = dict()
-            primaryLocationLineHash = hashlib.sha224(b"{vuln['name']}").hexdigest()
-            partialFingerprints['primaryLocationLineHash'] = primaryLocationLineHash
-            result['partialFingerprints'] = partialFingerprints
-
-            globals.results.append(result)
-
-            if dep_dict[compid['componentIdentifier']]['deptype'] == "Direct" and upgrade_ver is not None:
-                globals.fix_pr_data[dep_dict[compid['componentIdentifier']]['compname'] + "@" + \
-                                    dep_dict[compid['componentIdentifier']]['compversion']] = fix_pr_node
-                # fix_pr_data.append(fix_pr_node)
+        #
+        #     result = dict()
+        #     result['ruleId'] = vuln['name']
+        #     message = dict()
+        #     message['text'] = f"This file introduces a {vuln['vulnSeverity']} severity vulnerability in {dep_dict[compid['componentIdentifier']]['compname']}."
+        #     result['message'] = message
+        #     locations = []
+        #     loc = dict()
+        #     loc['file'] = bu.remove_cwd_from_filename(package_file)
+        #     # TODO: Can we reference the line number in the future, using project inspector?
+        #     loc['line'] = package_line
+        #
+        #     tool_rule = dict()
+        #     tool_rule['id'] = vuln['name']
+        #     shortDescription = dict()
+        #     shortDescription['text'] = f"{vuln['name']} - {vuln['vulnSeverity']} severity vulnerability in {dep_dict[compid['componentIdentifier']]['compname']}"
+        #     tool_rule['shortDescription'] = shortDescription
+        #     fullDescription = dict()
+        #     fullDescription['text'] = f"This file introduces a {vuln['vulnSeverity']} severity vulnerability in {dep_dict[compid['componentIdentifier']]['compname']}"
+        #     tool_rule['fullDescription'] = fullDescription
+        #     rule_help = dict()
+        #     rule_help['text'] = ""
+        #     if upgrade_ver is not None:
+        #         rule_help['markdown'] = f"**{vuln['name']}:** *{vuln['description']}*\n\nRecommended to upgrade to version {upgrade_ver}.\n\n"
+        #     else:
+        #         rule_help['markdown'] = f"**{vuln['name']}:** *{vuln['description']}*\n\nNo upgrade available at this time.\n\n"
+        #
+        #     if dep_dict[compid['componentIdentifier']]['deptype'] == "Direct":
+        #         rule_help['markdown'] = rule_help['markdown'] + f"Fix in package file '{bu.remove_cwd_from_filename(package_file)}'"
+        #     else:
+        #         if len(dep_dict[compid['componentIdentifier']]['paths']) > 0:
+        #             rule_help['markdown'] = rule_help['markdown'] + \
+        #                                     f" Find dependency in **{dep_dict[compid['componentIdentifier']]['paths'][0]}**."
+        #
+        #     tool_rule['help'] = rule_help
+        #     defaultConfiguration = dict()
+        #
+        #     if vuln['vulnSeverity'] == "CRITICAL" or vuln['vulnSeverity'] == "HIGH":
+        #         defaultConfiguration['level'] = "error"
+        #     elif vuln['vulnSeverity'] == "MEDIUM":
+        #         defaultConfiguration['level'] = "warning"
+        #     else:
+        #         defaultConfiguration['level'] = "note"
+        #
+        #     tool_rule['defaultConfiguration'] = defaultConfiguration
+        #     properties = dict()
+        #     properties['tags'] = ["security"]
+        #     properties['security-severity'] = str(vuln['overallScore'])
+        #     tool_rule['properties'] = properties
+        #     globals.tool_rules.append(tool_rule)
+        #
+        #     location = dict()
+        #     physicalLocation = dict()
+        #     artifactLocation = dict()
+        #     artifactLocation['uri'] = loc['file']
+        #     physicalLocation['artifactLocation'] = artifactLocation
+        #     region = dict()
+        #     region['startLine'] = loc['line']
+        #     physicalLocation['region'] = region
+        #     location['physicalLocation'] = physicalLocation
+        #     locations.append(location)
+        #     result['locations'] = locations
+        #
+        #     # Calculate fingerprint using simply the CVE/BDSA - the scope is the project in GitHub, so this should be fairly accurate for identifying a unique issue.
+        #     # Guidance from https://docs.github.com/en/code-security/code-scanning/integrating-with-code-scanning/sarif-support-for-code-scanning#preventing-duplicate-alerts-using-fingerprints
+        #     # and https://docs.oasis-open.org/sarif/sarif/v2.1.0/cs01/sarif-v2.1.0-cs01.html#_Toc16012611
+        #     # TODO Should this just leave it alone and let GitHub calculate it?
+        #     partialFingerprints = dict()
+        #     primaryLocationLineHash = hashlib.sha224(b"{vuln['name']}").hexdigest()
+        #     partialFingerprints['primaryLocationLineHash'] = primaryLocationLineHash
+        #     result['partialFingerprints'] = partialFingerprints
+        #
+        #     globals.results.append(result)
+        #
+        #     if dep_dict[compid['componentIdentifier']]['deptype'] == "Direct" and upgrade_ver is not None:
+        #         globals.fix_pr_data[dep_dict[compid['componentIdentifier']]['compname'] + "@" + \
+        #                             dep_dict[compid['componentIdentifier']]['compversion']] = fix_pr_node
+        #         # fix_pr_data.append(fix_pr_node)
 
 
 def main_process():
@@ -531,7 +525,7 @@ def main_process():
     upgrade_dict = process_upgrades(direct_deps_to_upgrade, version_dict, guidance_dict, origin_dict)
 
     # Test upgrades using Detect Rapid scans
-    good_upgrades = test_upgrades(upgrade_dict, direct_deps_to_upgrade, pm)
+    upgrade_count, good_upgrades = test_upgrades(upgrade_dict, direct_deps_to_upgrade, pm)
 
     # Output the data
     create_scan_outputs(rapid_scan_data, good_upgrades, dep_dict)
