@@ -100,6 +100,8 @@ def test_upgrades(upgrade_dict, deplist, pm):
     if globals.args.trustcert:
         bd_connect_args.append(f'--blackduck.trust.cert=true')
     # print(deplist)
+    # good_upgrades_dict = bu.attempt_indirect_upgrade(
+    #     pm, deplist, upgrade_dict, globals.detect_jar, bd_connect_args, globals.bd)
     good_upgrades_dict = bu.attempt_indirect_upgrade(
         pm, deplist, upgrade_dict, globals.detect_jar, bd_connect_args, globals.bd)
     return good_upgrades_dict
@@ -320,8 +322,11 @@ with max vulnerability score {max_vuln_severity}."
         globals.results.append(result)
 
         if upgrade_ver is not None:
-            globals.fix_pr_data[dep_dict[compid]['compname'] + "@" +
-                                dep_dict[compid]['compversion']] = fix_pr_node
+            # globals.fix_pr_data[dep_dict[compid]['compname'] + "@" +
+            #                     dep_dict[compid]['compversion']] = fix_pr_node
+            a_comp = compid.replace(':', '@').replace('/', '@').split('@')
+            globals.fix_pr_data[f"{a_comp[1]}@{a_comp[2]}"] = fix_pr_node
+
             # fix_pr_data.append(fix_pr_node)
 
 
