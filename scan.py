@@ -12,130 +12,6 @@ import globals
 import github_workflow
 
 
-def find_upgrade_versions(dirdep, versions_list, origin_dict, guidance_list):
-    # Clean & check the dependency string
-    moddep = dirdep.replace(':', '@').replace('/', '@')
-    a_dirdep = moddep.split('@')
-    if len(a_dirdep) < 3:
-        return
-    origin = a_dirdep[0]
-    # component_name = arr[1]
-    current_version = a_dirdep[-1]
-    v_curr = bu.normalise_version(current_version)
-    if v_curr is None:
-        return
-
-    future_vers = []
-    for ver, url in versions_list[::-1]:
-        v_ver = bu.normalise_version(ver)
-        if v_ver is None:
-            continue
-
-        # Check if entry exists in origins_dict
-        id = f"{dirdep}/{ver}"
-        if id in origin_dict:
-            for over in origin_dict[id]:
-                if 'originName' in over and 'originId' in over and over['originName'] == origin:
-                    a_over = over['originId'].split(':')
-                    if a_over[0] == a_dirdep[1] and a_over[1] == a_dirdep[2]:
-                        future_vers.append([ver, url])
-                        break
-
-    def find_next_ver(verslist, major, minor, patch):
-        foundver = ''
-        found_rels = [1000, -1, -1]
-
-        for ver, url in verslist:
-            v_ver = bu.normalise_version(ver)
-            if major < v_ver.major < found_rels[0]:
-                found_rels = [v_ver.major, v_ver.minor, v_ver.patch]
-                foundver = ver
-            elif v_ver.major == major:
-                if v_ver.minor > found_rels[1] and v_ver.minor > minor:
-                    found_rels = [major, v_ver.minor, v_ver.patch]
-                    foundver = ver
-                elif v_ver.minor == found_rels[1] and v_ver.patch > found_rels[2] and v_ver.patch > patch:
-                    found_rels = [major, v_ver.minor, v_ver.patch]
-                    foundver = ver
-
-        return foundver, found_rels[0]
-
-    #
-    # Find the initial upgrade (either latest in current version major range or guidance_short)
-    v_guidance_short = bu.normalise_version(guidance_list[0])
-    v_guidance_long = bu.normalise_version(guidance_list[1])
-    foundvers = []
-    if v_guidance_short is None:
-        # Find final version in current major range
-        verstring, guidance_major_last = find_next_ver(future_vers, v_curr.major, v_curr.minor, v_curr.patch)
-    else:
-        verstring = guidance_list[0]
-        guidance_major_last = v_guidance_short.major + 1
-    if verstring != '':
-        foundvers.append(verstring)
-
-    if v_guidance_long is None:
-        # Find final minor version in next major range
-        verstring, guidance_major_last = find_next_ver(future_vers, guidance_major_last, -1, -1)
-    else:
-        verstring = guidance_list[1]
-        guidance_major_last = v_guidance_long.major
-    if verstring != '':
-        foundvers.append(verstring)
-
-    while len(foundvers) <= 3:
-        verstring, guidance_major_last = find_next_ver(future_vers, guidance_major_last + 1, -1, -1)
-        if verstring == '':
-            break
-        foundvers.append(verstring)
-
-    return foundvers
-
-
-def test_upgrades(upgrade_dict, deplist, pm):
-    bd_connect_args = [
-        f'--blackduck.url={globals.args.url}',
-        f'--blackduck.api.token={globals.args.token}',
-    ]
-    if globals.args.trustcert:
-        bd_connect_args.append(f'--blackduck.trust.cert=true')
-    # print(deplist)
-    # good_upgrades_dict = bu.attempt_indirect_upgrade(
-    #     pm, deplist, upgrade_dict, globals.detect_jar, bd_connect_args, globals.bd)
-    good_upgrades_dict = bu.attempt_indirect_upgrade(
-        pm, deplist, upgrade_dict, globals.detect_jar, bd_connect_args, globals.bd)
-    return good_upgrades_dict
-
-
-def write_sarif():
-    # Prepare SARIF output structures
-    run = dict()
-    run['results'] = globals.results
-    runs = [run]
-
-    tool = dict()
-    driver = dict()
-    driver['name'] = "Synopsys Black Duck"
-    driver['organization'] = "Synopsys"
-    driver['rules'] = globals.tool_rules
-    tool['driver'] = driver
-    run['tool'] = tool
-
-    code_security_scan_report = dict()
-    code_security_scan_report['runs'] = runs
-    code_security_scan_report['$schema'] = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json"
-    code_security_scan_report['version'] = "2.1.0"
-    code_security_scan_report['runs'] = runs
-
-    globals.printdebug("DEBUG: SARIF Data structure=" + json.dumps(code_security_scan_report, indent=4))
-    try:
-        with open(globals.args.sarif, "w") as fp:
-            json.dump(code_security_scan_report, fp, indent=4)
-    except Exception as e:
-        print(f"ERROR: Unable to write to SARIF output file '{globals.args.sarif} - '" + str(e))
-        sys.exit(1)
-
-
 def process_bd_scan():
     project_baseline_name, project_baseline_version, globals.detected_package_files = \
         bo.get_blackduck_status(globals.args.output)
@@ -330,6 +206,50 @@ with max vulnerability score {max_vuln_severity}."
             # fix_pr_data.append(fix_pr_node)
 
 
+def test_upgrades(upgrade_dict, deplist, pm):
+    bd_connect_args = [
+        f'--blackduck.url={globals.args.url}',
+        f'--blackduck.api.token={globals.args.token}',
+    ]
+    if globals.args.trustcert:
+        bd_connect_args.append(f'--blackduck.trust.cert=true')
+    # print(deplist)
+    # good_upgrades_dict = bu.attempt_indirect_upgrade(
+    #     pm, deplist, upgrade_dict, globals.detect_jar, bd_connect_args, globals.bd)
+    good_upgrades_dict = bu.attempt_indirect_upgrade(
+        pm, deplist, upgrade_dict, globals.detect_jar, bd_connect_args, globals.bd)
+    return good_upgrades_dict
+
+
+def write_sarif():
+    # Prepare SARIF output structures
+    run = dict()
+    run['results'] = globals.results
+    runs = [run]
+
+    tool = dict()
+    driver = dict()
+    driver['name'] = "Synopsys Black Duck"
+    driver['organization'] = "Synopsys"
+    driver['rules'] = globals.tool_rules
+    tool['driver'] = driver
+    run['tool'] = tool
+
+    code_security_scan_report = dict()
+    code_security_scan_report['runs'] = runs
+    code_security_scan_report['$schema'] = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json"
+    code_security_scan_report['version'] = "2.1.0"
+    code_security_scan_report['runs'] = runs
+
+    globals.printdebug("DEBUG: SARIF Data structure=" + json.dumps(code_security_scan_report, indent=4))
+    try:
+        with open(globals.args.sarif, "w") as fp:
+            json.dump(code_security_scan_report, fp, indent=4)
+    except Exception as e:
+        print(f"ERROR: Unable to write to SARIF output file '{globals.args.sarif} - '" + str(e))
+        sys.exit(1)
+
+
 def main_process():
 
     # Process the main Rapid scan
@@ -344,7 +264,7 @@ def main_process():
     # upgrade_dict = process_upgrades(direct_deps_to_upgrade, version_dict, guidance_dict, origin_dict)
     upgrade_dict = {}
     for dep in direct_deps_to_upgrade:
-        upgrade_dict[dep] = find_upgrade_versions(dep, version_dict[dep], origin_dict, guidance_dict[dep])
+        upgrade_dict[dep] = bu.find_upgrade_versions(dep, version_dict[dep], origin_dict, guidance_dict[dep])
 
     # Test upgrades using Detect Rapid scans
     good_upgrades = test_upgrades(upgrade_dict, direct_deps_to_upgrade, pm)
