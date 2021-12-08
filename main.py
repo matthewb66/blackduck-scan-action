@@ -1,12 +1,9 @@
 #!/usr/bin/env python
 
 import argparse
-# import json
 import sys
-# import os
-# import subprocess
+import os
 from BlackDuckUtils import Utils as bu
-# import WorkflowUtils
 import globals
 from blackduck import Client
 
@@ -14,7 +11,6 @@ import scan
 
 
 if __name__ == "__main__":
-
     # os.chdir('/Users/mbrad/working/duck_hub_ORI')
     parser = argparse.ArgumentParser(description="Run Black Duck Security Scan")
     parser.add_argument('--debug', default=0, help='set debug level [0-9]')
@@ -35,8 +31,14 @@ if __name__ == "__main__":
     parser.add_argument('--skip_detect', default=False, action='store_true', help='Skip running of detect')
     parser.add_argument("--detect_opts", type=str, default="false", help="Passthrough options to Detect")
 
-
     globals.args = parser.parse_args()
+
+    if globals.args.url is None:
+        globals.args.url = os.getenv("BLACKDUCK_URL")
+    if globals.args.token is None:
+        globals.args.token = os.getenv("BLACKDUCK_API_TOKEN")
+    if globals.args.trustcert is None:
+        globals.args.trustcert = os.getenv("BLACKDUCK_TRUST_CERT")
 
     if (globals.args.url is None or globals.args.token is None):
         print(f"ERROR: Must specify Black Duck Hub URL and API Token")
