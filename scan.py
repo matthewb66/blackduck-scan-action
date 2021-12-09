@@ -5,8 +5,11 @@ import hashlib
 from BlackDuckUtils import BlackDuckOutput as bo
 from BlackDuckUtils import Utils as bu
 from BlackDuckUtils import bdio as bdio
-# from BlackDuckUtils import MavenUtils as mu
+# from BlackDuckUtils import MavenUtils
+# from BlackDuckUtils import NpmUtils
+# from BlackDuckUtils import NugetUtils
 from BlackDuckUtils import asyncdata as asyncdata
+
 
 import globals
 import github_workflow
@@ -15,8 +18,6 @@ import github_workflow
 def process_bd_scan():
     project_baseline_name, project_baseline_version, globals.detected_package_files = \
         bo.get_blackduck_status(globals.args.output)
-
-    # print(f"INFO: Running for project '{project_baseline_name}' version '{project_baseline_version}'")
 
     # Look up baseline data
     pvurl = bu.get_projver(globals.bd, project_baseline_name, project_baseline_version)

@@ -5,6 +5,7 @@ import globals
 from github import Github
 from BlackDuckUtils import MavenUtils
 from BlackDuckUtils import NpmUtils
+from BlackDuckUtils import NugetUtils
 
 
 def github_create_pull_request_comment(g, pr, comments_markdown, comments_markdown_footer):
@@ -117,6 +118,13 @@ def github_fix_pr():
             github_commit_file_and_create_fixpr(g, fix_pr_node)
         elif fix_pr_node['ns'] == "maven":
             globals.files_to_patch = MavenUtils.upgrade_maven_dependency(fix_pr_node['filename'],
+                                                                         fix_pr_node['componentName'],
+                                                                         fix_pr_node['versionFrom'],
+                                                                         fix_pr_node['versionTo'])
+            globals.printdebug(f"DEBUG: Files to patch are: {globals.files_to_patch}")
+            github_commit_file_and_create_fixpr(g, fix_pr_node)
+        elif fix_pr_node['ns'] == "nuget":
+            globals.files_to_patch = NugetUtils.upgrade_nuget_dependency(fix_pr_node['filename'],
                                                                          fix_pr_node['componentName'],
                                                                          fix_pr_node['versionFrom'],
                                                                          fix_pr_node['versionTo'])
