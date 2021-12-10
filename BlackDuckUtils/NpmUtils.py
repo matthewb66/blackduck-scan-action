@@ -97,7 +97,6 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
             print(cmd)
             ret = os.system(cmd)
 
-            print(os.listdir('.'))
             if ret == 0:
                 installed_packages.append([comp, upgrade_version])
                 orig_deps_processed.append(dep)
@@ -135,7 +134,8 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
             # All tested upgrades not vulnerable
             pass
 
-        os.remove('package.json')
+        if os.path.isfile('package.json'):
+            os.remove('package.json')
         os.remove('package-lock.json')
         # rapid_scan_data = bo.get_rapid_scan_results('upgrade-tests', bd)
 
