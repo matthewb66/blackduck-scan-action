@@ -15,9 +15,9 @@ import globals
 import github_workflow
 
 
-def process_bd_scan():
+def process_bd_scan(output):
     project_baseline_name, project_baseline_version, globals.detected_package_files = \
-        bo.get_blackduck_status(globals.args.output)
+        bo.get_blackduck_status(output)
 
     # Look up baseline data
     pvurl = bu.get_projver(globals.bd, project_baseline_name, project_baseline_version)
@@ -218,11 +218,12 @@ def test_upgrades(upgrade_dict, deplist, pm):
     # good_upgrades_dict = bu.attempt_indirect_upgrade(
     #     pm, deplist, upgrade_dict, globals.detect_jar, bd_connect_args, globals.bd)
     good_upgrades_dict = bu.attempt_indirect_upgrade(
-        pm, deplist, upgrade_dict, globals.detect_jar, bd_connect_args, globals.bd)
+        pm, deplist, upgrade_dict, globals.detect_jar, bd_connect_args, globals.bd, globals.args.upgrade_indirect,
+        globals.args.upgrade_major)
     return good_upgrades_dict
 
 
-def write_sarif():
+def write_sarif(sarif_file):
     # Prepare SARIF output structures
     run = dict()
     run['results'] = globals.results
@@ -244,17 +245,17 @@ def write_sarif():
 
     globals.printdebug("DEBUG: SARIF Data structure=" + json.dumps(code_security_scan_report, indent=4))
     try:
-        with open(globals.args.sarif, "w") as fp:
+        with open(sarif_file, "w") as fp:
             json.dump(code_security_scan_report, fp, indent=4)
     except Exception as e:
-        print(f"ERROR: Unable to write to SARIF output file '{globals.args.sarif} - '" + str(e))
+        print(f"ERROR: Unable to write to SARIF output file '{sarif_file} - '" + str(e))
         sys.exit(1)
 
 
-def main_process():
+def main_process(output):
 
     # Process the main Rapid scan
-    rapid_scan_data, dep_dict, direct_deps_to_upgrade, pm = process_bd_scan()
+    rapid_scan_data, dep_dict, direct_deps_to_upgrade, pm = process_bd_scan(output)
 
     # Get component data via async calls
     # guidance_dict, version_dict, origin_dict = asyncio.run(async_main(direct_deps_to_upgrade, globals.bd))
@@ -265,7 +266,8 @@ def main_process():
     # upgrade_dict = process_upgrades(direct_deps_to_upgrade, version_dict, guidance_dict, origin_dict)
     upgrade_dict = {}
     for dep in direct_deps_to_upgrade:
-        upgrade_dict[dep] = bu.find_upgrade_versions(dep, version_dict[dep], origin_dict, guidance_dict[dep])
+        upgrade_dict[dep] = bu.find_upgrade_versions(dep, version_dict[dep], origin_dict, guidance_dict[dep],
+                                                     globals.args.upgrade_major)
 
     # Test upgrades using Detect Rapid scans
     good_upgrades = test_upgrades(upgrade_dict, direct_deps_to_upgrade, pm)
@@ -273,7 +275,8 @@ def main_process():
     # Output the data
     create_scan_outputs(rapid_scan_data, good_upgrades, dep_dict)
 
-    write_sarif()
+    if globals.args.sarif != '':
+        write_sarif(globals.args.sarif)
 
     # Optionally generate Fix PR
     if globals.args.fix_pr and len(globals.fix_pr_data.values()) > 0:

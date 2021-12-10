@@ -19,16 +19,15 @@ if __name__ == "__main__":
     parser.add_argument("--trustcert", default="false", type=str, help="Black Duck trust certificate")
     parser.add_argument("--project", type=str, help="Project name")
     parser.add_argument("--version", type=str, help="Project version name")
-    parser.add_argument("--mode", default="intelligent", type=str,
+    parser.add_argument("--mode", default="rapid", type=str,
                         help="Black Duck scanning mode, either intelligent or rapid")
     parser.add_argument("--output", default="blackduck-output", type=str, help="Output directory")
     parser.add_argument("--fix_pr", type=str, default="false", help="Create a Fix PR, true or false")
     parser.add_argument("--upgrade_major", type=str, default="false", help="Offer upgrades to major versions, true or false")
     parser.add_argument("--comment_on_pr", type=str, default="false", help="Generate a comment on pull request, true or false")
     parser.add_argument("--sarif", type=str, default="blackduck-sarif.json", help="SARIF output file")
-    parser.add_argument("--incremental_results", default="false", type=str, help="Incremental output file")
-    parser.add_argument("--upgrade_indirect", default="false", type=str, help="Attempt upgrade for indirect dependencies")
-    parser.add_argument('--skip_detect', default=False, action='store_true', help='Skip running of detect')
+    parser.add_argument("--incremental_results", default="false", type=str, help="Compare to previous intelligent scan project - only report new/changed components")
+    parser.add_argument("--upgrade_indirect", default="false", type=str, help="Attempt upgrade for vulnerable indirect dependencies by upgrading direct parents")
     parser.add_argument("--detect_opts", type=str, default="false", help="Passthrough options to Detect")
 
     globals.args = parser.parse_args()
@@ -112,4 +111,4 @@ if __name__ == "__main__":
                 verify=globals.args.trustcert,  # TLS certificate verification
                 timeout=300)
 
-    scan.main_process()
+    scan.main_process(globals.args.output)
