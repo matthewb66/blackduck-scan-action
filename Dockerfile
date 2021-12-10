@@ -9,5 +9,5 @@ ADD *.py /
 
 WORKDIR /app
 
-ENTRYPOINT ["/blackduck-scan.py"]
+ENTRYPOINT ["/main.py"]
 CMD ["--help"]
