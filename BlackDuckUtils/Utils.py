@@ -248,7 +248,9 @@ def attempt_indirect_upgrade(pm, deps_list, upgrade_dict, detect_jar, connectopt
     dirname = tempfile.TemporaryDirectory()
     # os.mkdir(dirname)
     origdir = os.getcwd()
+    print(f'Start directory = {os.getcwd()}')
     os.chdir(dirname.name)
+    print(f'Temp Scan Directory = {os.getcwd()}')
 
     if pm == 'npm':
         good_upgrades_dict = NpmUtils.attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, connectopts, bd,

@@ -97,6 +97,7 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
             print(cmd)
             ret = os.system(cmd)
 
+            print(os.listdir('.'))
             if ret == 0:
                 installed_packages.append([comp, upgrade_version])
                 orig_deps_processed.append(dep)
