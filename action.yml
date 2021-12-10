@@ -16,7 +16,7 @@ inputs:
     description: "Project name in the Black Duck server"
   mode:
     description: "Scanning mode, intelligent or rapid"
-    default: "intelligent"
+    default: "rapid"
   file:
     description: "Location of the related file in the repository"
   output:
@@ -24,9 +24,6 @@ inputs:
     default: "blackduck-output"
   fix_pr:
     description: "Generate a Fix PR for each insecure component"
-    default: "false"
-  upgrade_major:
-    description: "Recommend upgrade guidance to major, not just minor, versions"
     default: "false"
   comment_on_pr:
     description: "Comment on a pull request"
@@ -37,6 +34,12 @@ inputs:
   incremental_results:
     description: "Incremental analysis"
     default: "false"
+  upgrade_major:
+    description: "Recommend upgrade guidance to major, not just minor, versions"
+    default: "false"
+  upgrade_indirect:
+    description: "Test & upgrade direct dependencies with vulnerable transitive (indirect) dependencies"
+    default: "true"
 runs:
   using: "docker"
   image: "Dockerfile"
@@ -55,11 +58,13 @@ runs:
   - ${{ inputs.project }}
   - --fix_pr
   - ${{ inputs.fix_pr }}
-  - --upgrade_major
-  - ${{ inputs.upgrade_major }}
   - --comment_on_pr
   - ${{ inputs.comment_on_pr }}
   - --sarif
   - ${{ inputs.sarif }}
   - --incremental_results
   - ${{ inputs.incremental_results }}
+  - --upgrade_major
+  - ${{ inputs.upgrade_major }}
+  - --upgrade_indirect
+  - ${{ inputs.upgrade_indirect }}
