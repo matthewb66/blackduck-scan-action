@@ -6,7 +6,7 @@ RUN python3 -m ensurepip
 RUN pip3 install --upgrade pip && pip3 install PyGithub networkx blackduck aiohttp semver
 
 ADD *.py /
-ADD BlackDuckUtils/*.py /BlackDuckUtils
+ADD BlackDuckUtils/*.py /BlackDuckUtils/
 
 WORKDIR /app
 
