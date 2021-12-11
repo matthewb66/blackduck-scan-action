@@ -1,6 +1,7 @@
 import json
 import sys
 import hashlib
+import os
 
 from BlackDuckUtils import BlackDuckOutput as bo
 from BlackDuckUtils import Utils as bu
@@ -277,6 +278,12 @@ def main_process(output):
 
     if globals.args.sarif != '':
         write_sarif(globals.args.sarif)
+
+    globals.github_token = os.getenv("GITHUB_TOKEN")
+    globals.github_repo = os.getenv("GITHUB_REPOSITORY")
+    globals.github_ref = os.getenv("GITHUB_REF")
+    globals.github_api_url = os.getenv("GITHUB_API_URL")
+    globals.github_sha = os.getenv("GITHUB_SHA")
 
     # Optionally generate Fix PR
     if globals.args.fix_pr and len(globals.fix_pr_data.values()) > 0:

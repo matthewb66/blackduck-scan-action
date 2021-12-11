@@ -22,15 +22,15 @@ comment_on_pr_comments = []
 tool_rules = []
 results = []
 fix_pr_data = dict()
-files_to_patch = None
+files_to_patch = {}
 rscan_items = []
 
-github_token = None
-github_repo = None
-github_branch = None
-github_ref = None
-github_api_url = None
-github_sha = None
+github_token = ''
+github_repo = ''
+github_branch = ''
+github_ref = ''
+github_api_url = ''
+github_sha = ''
 
 
 def printdebug(dstring):
