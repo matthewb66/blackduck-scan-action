@@ -57,12 +57,29 @@ version '{project_baseline_version}' - will not present incremental results")
 
 
 def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict):
-    for compid in upgrade_dict.keys():
+    if globals.debug: print(f"DEBUG: Entering create_scan_outputs({rapid_scan_data},\n{upgrade_dict},\n{dep_dict}")
+
+    # JC: The change below seems  to start with just the components to be upgraded, which will lead to anything without
+    # upgrade guidance being left out. Since this loop also produces the overall report, this will miss
+    # all of those too. Switching to the above logic for now.
+
+    for item in rapid_scan_data['items']:
+        compid = item['componentIdentifier']
+        comp_ns, comp_name, comp_version = bu.parse_component_id(item['componentIdentifier'])
+
+    #for compid in upgrade_dict.keys():
+    #    if globals.debug: print(f"DEBUG: compid={compid}")
+
         comment_on_pr = ''
         message = ''
         message_markdown = ''
         # Loop the list of direct deps
-        upgrade_ver = upgrade_dict[compid]
+        if compid in upgrade_dict:
+            upgrade_ver = upgrade_dict[compid]
+        else:
+            upgrade_ver = None
+
+        if globals.debug: print(f"DEBUG: For compid={compid} upgrade_ver={upgrade_ver}")
 
         package_file, package_line = bu.detect_package_file(globals.detected_package_files, compid)
 
@@ -75,36 +92,55 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict):
             fix_pr_node['ns'] = ns
             fix_pr_node['filename'] = bu.remove_cwd_from_filename(package_file)
             fix_pr_node['comments'] = []
-            fix_pr_node['comments_markdown'] = ["| Child Component | ID | Severity | Description | Vulnerable version \
-| Upgrade to |", "| --- | --- | --- | --- | --- |"]
+            fix_pr_node['comments_markdown'] = ["| Vulnerability ID | Severity | Policy | Description |", "| --- | --- | --- | --- |"]
             fix_pr_node['comments_markdown_footer'] = ""
+            if globals.debug: print(f"DEBUG: fix_pr_node={fix_pr_node}")
 
-        children = []
-        for alldep in dep_dict.keys():
-            if compid in dep_dict[alldep]['directparents']:
-                children.append(alldep)
+        #children = []
+        #for alldep in dep_dict.keys():
+        #    if compid in dep_dict[alldep]['directparents']:
+        #        children.append(alldep)
+        #
+        #print(f"children={children}")
 
         max_vuln_severity = 0
         children_string = ''
 
-        for child in children:
-            # Find child in rapidscan data
-            child_ns, child_name, child_ver = bu.parse_component_id(child)
-            children_string += f"{child_name}/{child_ver}"
-            for rscanitem in rapid_scan_data['items']:
-                if rscanitem['componentIdentifier'] == child:
-                    for vuln in rscanitem['policyViolationVulnerabilities']:
+        if True:
+        #for child in children:
+            ## Find child in rapidscan data
+            #child_ns, child_name, child_ver = bu.parse_component_id(child)
+            #children_string += f"{child_name}/{child_ver}"
+            #for rscanitem in rapid_scan_data['items']:
+            if True:
+                #print(f"rscanitem={rscanitem}")
+                #if rscanitem['componentIdentifier'] == child:
+                if True:
+                    #print(f"rscanitem=={child}")
+                    vulns = []
+                    #for vuln in rscanitem['policyViolationVulnerabilities']:
+                    for vuln in item['policyViolationVulnerabilities']:
+                        print(f"vuln={vuln}")
                         if max_vuln_severity < vuln['overallScore']:
                             max_vuln_severity = vuln['overallScore']
                         message_markdown_footer = ''
                         if upgrade_ver is not None:
                             message += f"* {vuln['name']} - {vuln['vulnSeverity']} severity vulnerability violates policy '{vuln['violatingPolicies'][0]['policyName']}': *{vuln['description']}* Recommended to upgrade to version {upgrade_ver}."
-                            message_markdown += f"| {vuln['name']} | {vuln['vulnSeverity']} | {vuln['description']} | {child_ver} | {upgrade_ver} | "
-                            comment_on_pr += f"| {vuln['name']} | {child} | {vuln['name']} |  {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {vuln['description']} | {child_ver} | {upgrade_ver} |"
+                            message_markdown += f"| {vuln['name']} | {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {vuln['description']} | "
+                            comment_on_pr += f"| {vuln['name']} | {comp_name} | {vuln['name']} |  {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {vuln['description']} | {comp_version} | {upgrade_ver} |"
                         else:
                             message += f"* {vuln['name']} - {vuln['vulnSeverity']} severity vulnerability violates policy '{vuln['violatingPolicies'][0]['policyName']}': *{vuln['description']}* No upgrade available at this time."
-                            message_markdown += f"| {vuln['name']} | {vuln['vulnSeverity']} | {vuln['description']} | {child_ver} | {upgrade_ver} | "
-                            comment_on_pr += f"| {vuln['name']} | {child} | {vuln['name']} | {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {vuln['description']} | {child_ver} | N/A |"
+                            message_markdown += f"| {vuln['name']} | {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {vuln['description']} | "
+                            comment_on_pr += f"| {vuln['name']} | {comp_name} | {vuln['name']} | {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {vuln['description']} | {comp_version} | N/A |"
+
+                        vulns.append( {
+                            "name": vuln['name'],
+                            "severity": vuln['vulnSeverity'],
+                            "policy": vuln['violatingPolicies'][0]['policyName']
+                        })
+                    fix_pr_node['vulns'] = vulns
+                    print(f"fix_pr_node222={fix_pr_node}")
+
         #
         #     if dep_dict[compid['componentIdentifier']]['deptype'] == "Direct":
         message = message + f"Fix in package file '{bu.remove_cwd_from_filename(package_file)}'"
@@ -272,6 +308,8 @@ def main_process(output):
 
     # Test upgrades using Detect Rapid scans
     good_upgrades = test_upgrades(upgrade_dict, direct_deps_to_upgrade, pm)
+
+    print("Create scan outputs")
 
     # Output the data
     create_scan_outputs(rapid_scan_data, good_upgrades, dep_dict)

@@ -38,7 +38,7 @@ def github_commit_file_and_create_fixpr(g, fix_pr_node):
 
     new_branch_seed = '%030x' % random.randrange(16**30)
     # new_branch_seed = secrets.token_hex(15)
-    new_branch_name = globals.github_branch + "-snps-fix-pr-" + new_branch_seed
+    new_branch_name = globals.github_ref + "-snps-fix-pr-" + new_branch_seed
     globals.printdebug(f"DEBUG: Create branch '{new_branch_name}'")
     ref = repo.create_git_ref("refs/heads/" + new_branch_name, commit.sha)
     globals.printdebug(ref)
@@ -96,10 +96,11 @@ def github_fix_pr():
     if globals.debug: print(f"DEBUG: Connect to GitHub at {globals.github_api_url}")
     g = Github(globals.github_token, base_url=globals.github_api_url)
 
-    print("DEBUG: Generating Fix Pull Requests")
+    if globals.debug: print("DEBUG: Generating Fix Pull Requests")
 
     pulls = github_get_pull_requests(g)
 
+    if globals.debug: print(f"fix_pr_data={globals.fix_pr_data}")
     for fix_pr_node in globals.fix_pr_data.values():
         globals.printdebug(f"DEBUG: Fix '{fix_pr_node['componentName']}' version '{fix_pr_node['versionFrom']}' in file '{fix_pr_node['filename']}' using ns '{fix_pr_node['ns']}' to version '{fix_pr_node['versionTo']}'")
 
@@ -109,7 +110,7 @@ def github_fix_pr():
             continue
 
         if fix_pr_node['ns'] == "npmjs":
-            globalsfiles_to_patch = NpmUtils.upgrade_npm_dependency(fix_pr_node['filename'],
+            globals.files_to_patch = NpmUtils.upgrade_npm_dependency(fix_pr_node['filename'],
                                                                     fix_pr_node['componentName'],
                                                                     fix_pr_node['versionFrom'],
                                                                     fix_pr_node['versionTo'])
