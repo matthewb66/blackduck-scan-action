@@ -106,7 +106,7 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
         if len(installed_packages) == 0:
             # print('No upgrades to test')
             continue
-        print(f'Validating {len(test_dirdeps)} potential upgrades')
+        print(f'Validating {len(installed_packages)} potential upgrades')
 
         pvurl, projname, vername, retval = bu.run_detect('upgrade-tests', detect_connection_opts, False)
 
@@ -116,8 +116,8 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
 
             # print(f'MYDEBUG: Vuln direct deps = {direct_deps_vuln}')
             for vulndep in direct_deps_vuln:
-                arr = vulndep.split(':')
-                compname = arr[2]
+                arr = vulndep.replace('/', ':').split(':')
+                compname = arr[1]
                 #
                 # find comp in depver_list
                 for upgradepkg, origdep in zip(installed_packages, orig_deps_processed):
