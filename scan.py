@@ -127,11 +127,11 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict):
                         if upgrade_ver is not None:
                             message += f"* {vuln['name']} - {vuln['vulnSeverity']} severity vulnerability violates policy '{vuln['violatingPolicies'][0]['policyName']}': *{vuln['description']}* Recommended to upgrade to version {upgrade_ver}."
                             message_markdown += f"| {vuln['name']} | {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {vuln['description']} | "
-                            comment_on_pr += f"| {vuln['name']} | {comp_name} | {vuln['name']} |  {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {vuln['description']} | {comp_version} | {upgrade_ver} |"
+                            comment_on_pr += f"| {comp_name} | {vuln['name']} |  {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {vuln['description']} | {comp_version} | {upgrade_ver} |"
                         else:
                             message += f"* {vuln['name']} - {vuln['vulnSeverity']} severity vulnerability violates policy '{vuln['violatingPolicies'][0]['policyName']}': *{vuln['description']}* No upgrade available at this time."
                             message_markdown += f"| {vuln['name']} | {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {vuln['description']} | "
-                            comment_on_pr += f"| {vuln['name']} | {comp_name} | {vuln['name']} | {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {vuln['description']} | {comp_version} | N/A |"
+                            comment_on_pr += f"| {comp_name} | {vuln['name']} |  {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {vuln['description']} | {comp_version} | N/A |"
 
                         vulns.append( {
                             "name": vuln['name'],
@@ -151,7 +151,8 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict):
         #             message_markdown_footer = f"**Find dependency in {dep_dict[compid['componentIdentifier']]['paths'][0]}**"
         #
         #     print("INFO: " + message)
-        globals.comment_on_pr_comments.append(comment_on_pr)
+        if (comment_on_pr != ''):
+            globals.comment_on_pr_comments.append(comment_on_pr)
 
         # Save message to include in Fix PR
         if upgrade_ver is not None:

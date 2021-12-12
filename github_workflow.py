@@ -1,4 +1,5 @@
 import random
+import re
 import sys
 import globals
 
@@ -156,58 +157,43 @@ def github_pr_comment():
     ref = repo.get_git_ref(globals.github_ref[5:].replace("/merge", "/head"))
     globals.printdebug(ref)
 
-    # Look for this pull request by finding the first commit, and then looking for a
-    # PR that matches
-    # TODO Safe to assume that there are at least one commit?
-    github_sha = ref.object.sha
-    # for commit in ref:
-    #    if (commit['object']['type'] == "commit"):
-    #        github_sha = commit['object']['sha']
-    #        break
+    pull_number_for_sha = None
+    m = re.search('pull\/(.+?)\/', globals.github_ref)
+    if m:
+        pull_number_for_sha = int(m.group(1))
 
-    # if (github_sha == None):
-    #    print(f"ERROR: Unable to find any commits for ref '{github_ref}'")
-    #    sys.exit(1)
+    if globals.debug: print(f"DEBUG: Pull request #{pull_number_for_sha}")
 
-    print(f"DEBUG: Found Git sha {github_sha} for ref '{globals.github_ref}'")
-
-    # TODO Should this handle other bases than master?
-    pulls = repo.get_pulls(state='open', sort='created', base='master', direction="desc")
-    pr = None
-    pr_commit = None
-    globals.printdebug(f"DEBUG: Pull requests:")
-    pull_number_for_sha = 0
-    for pull in pulls:
-        globals.printdebug(f"DEBUG: Pull request number: {pull.number}")
-        # Can we find the current commit sha?
-        commits = pull.get_commits()
-        for commit in commits.reversed:
-            globals.printdebug(f"DEBUG:   Commit sha: " + str(commit.sha))
-            if commit.sha == github_sha:
-                globals.printdebug(f"DEBUG:     Found")
-                pull_number_for_sha = pull.number
-                pr = pull
-                pr_commit = commit
-                break
-        if pull_number_for_sha != 0:
-            break
-
-    if pull_number_for_sha == 0:
-        print(f"ERROR: Unable to find pull request for commit '{github_sha}'")
+    if pull_number_for_sha == None:
+        print(f"ERROR: Unable to find pull request #{pull_number_for_sha}")
         sys.exit(1)
+
+    pr = repo.get_pull(pull_number_for_sha)
+
+    pr_comments = repo.get_issues_comments()
+    existing_comment = None
+    for pr_comment in pr_comments:
+        if globals.debug: print(f"DEBUG: Issue comment={pr_comment.body}")
+        if ("Synopsys Black Duck found" in pr_comment.body):
+            if globals.debug: print(f"DEBUG: Found existing comment")
+            existing_comment = pr_comment
 
     # Tricky here, we want everything all in one comment. So prepare a header, then append each of the comments and
     # create a comment
     comments_markdown = [
-        "| Component | Type | Vulnerability | Severity |  Description | Vulnerable version | Upgrade to |",
+        "| Component | Vulnerability | Severity |  Policy | Description | Current Ver | Upgrade to |",
         "| --- | --- | --- | --- | --- | --- | --- |"
     ]
 
     for comment in globals.comment_on_pr_comments:
         comments_markdown.append(comment)
 
-    globals.printdebug(f"DEUBG: Comment on Pull Request #{pr.number} for commit {github_sha}")
-    github_create_pull_request_comment(g, pr, comments_markdown, "")
+    if (existing_comment != None):
+        globals.printdebug(f"DEBUG: Update/edit existing comment for PR #{pull_number_for_sha}")
+        existing_comment.edit("\n".join(comments_markdown))
+    else:
+        globals.printdebug(f"DEBUG: Create new comment for PR #{pull_number_for_sha}")
+        github_create_pull_request_comment(g, pr, comments_markdown, "")
 
 
 def github_comment_on_pr_comments():
