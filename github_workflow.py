@@ -189,14 +189,14 @@ def github_pr_comment():
         comments_markdown.append(comment)
 
     if (existing_comment != None):
-        globals.printdebug(f"DEBUG: Update/edit existing comment for PR #{pull_number_for_sha}")
+        globals.printdebug(f"DEBUG: Update/edit existing comment for PR #{pull_number_for_sha}\n{comments_markdown}")
         existing_comment.edit("\n".join(comments_markdown))
     else:
         globals.printdebug(f"DEBUG: Create new comment for PR #{pull_number_for_sha}")
         github_create_pull_request_comment(g, pr, comments_markdown, "")
 
 
-def github_comment_on_pr_comments():
+def github_set_commit_status(is_failure):
 
     if (globals.github_token is None or globals.github_repo is None or globals.github_ref is None or
             globals.github_api_url is None or globals.github_sha is None):
@@ -210,11 +210,21 @@ def github_comment_on_pr_comments():
     repo = g.get_repo(globals.github_repo)
     globals.printdebug(repo)
 
-    status = repo.get_commit(sha=globals.github_sha).create_status(
-        state="error",
-        target_url="https://FooCI.com",
-        description="Black Duck security scan found vulnerabilities",
-        context="Synopsys Black Duck"
-    )
+    if (is_failure):
+        status = repo.get_commit(sha=globals.github_sha).create_status(
+            state="failure",
+            target_url="https://synopsys.com/software",
+            description="Black Duck security scan found vulnerabilities",
+            context="Synopsys Black Duck"
+        )
+    else:
+        status = repo.get_commit(sha=globals.github_sha).create_status(
+            state="success",
+            target_url="https://synopsys.com/software",
+            description="Black Duck security scan clear from vulnerabilities",
+            context="Synopsys Black Duck"
+        )
+
+
     globals.printdebug(f"DEBUG: Status:")
     globals.printdebug(status)

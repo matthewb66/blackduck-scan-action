@@ -22,7 +22,7 @@ def process_bd_scan(output):
 
     # Look up baseline data
     pvurl = bu.get_projver(globals.bd, project_baseline_name, project_baseline_version)
-    baseline_comp_cache = dict()
+    globals.baseline_comp_cache = dict()
     if globals.args.incremental_results:
         if pvurl == '':
             print(f"WARN: Unable to find project '{project_baseline_name}' \
@@ -35,12 +35,12 @@ version '{project_baseline_version}' - will not present incremental results")
             # Can't cache the component Id / external id very easily here as it's not top-level,
             # and may have multiple origins
             for comp in baseline_comps:
-                if not comp['componentName'] in baseline_comp_cache:
-                    baseline_comp_cache[comp['componentName']] = dict()
+                if not comp['componentName'] in globals.baseline_comp_cache:
+                    globals.baseline_comp_cache[comp['componentName']] = dict()
                 # if (baseline_comp_cache[comp['componentName']] == None): baseline_comp_cache[comp['componentName']] = dict()
-                baseline_comp_cache[comp['componentName']][comp['componentVersionName']] = 1
+                globals.baseline_comp_cache[comp['componentName']][comp['componentVersionName']] = 1
                 # baseline_comp_cache[comp['componentName']] = comp['componentVersionName']
-            globals.printdebug(f"DEBUG: Baseline component cache=" + json.dumps(baseline_comp_cache, indent=4))
+            globals.printdebug(f"DEBUG: Baseline component cache=" + json.dumps(globals.baseline_comp_cache, indent=4))
             globals.printdebug(f"DEBUG: Generated baseline component cache")
 
     bdio_graph, bdio_projects = bdio.get_bdio_dependency_graph(globals.args.output)
@@ -50,7 +50,7 @@ version '{project_baseline_version}' - will not present incremental results")
         sys.exit(1)
 
     rapid_scan_data, dep_dict, direct_deps_to_upgrade, pm = bu.process_scan(
-        globals.args.output, globals.bd, baseline_comp_cache,
+        globals.args.output, globals.bd, globals.baseline_comp_cache,
         globals.args.incremental_results, globals.args.upgrade_indirect)
 
     return rapid_scan_data, dep_dict, direct_deps_to_upgrade, pm
@@ -66,6 +66,18 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict):
     for item in rapid_scan_data['items']:
         compid = item['componentIdentifier']
         comp_ns, comp_name, comp_version = bu.parse_component_id(item['componentIdentifier'])
+
+        print(f"item={item} componentName={item['componentName']}")
+        print(f"cache={globals.baseline_comp_cache}")
+        if globals.args.incremental_results and item['componentName'] in globals.baseline_comp_cache:
+            if (item['versionName'] in globals.baseline_comp_cache[item['componentName']] and
+                    globals.baseline_comp_cache[item['componentName']][item['versionName']] == 1):
+                globals.printdebug(f"DEBUG:   Skipping component {item['componentName']} \
+        version {item['versionName']} because it was already seen in baseline")
+                continue
+            else:
+                globals.printdebug(f"DEBUG:   Including component {item['componentName']} \
+        version {item['versionName']} because it was not seen in baseline")
 
     #for compid in upgrade_dict.keys():
     #    if globals.debug: print(f"DEBUG: compid={compid}")
@@ -332,5 +344,6 @@ def main_process(output):
     if globals.args.comment_on_pr and len(globals.comment_on_pr_comments) > 0:
         github_workflow.github_pr_comment()
 
-    if len(globals.comment_on_pr_comments) > 0:
-        github_workflow.github_comment_on_pr_comments()
+    # Set failure or success
+    github_workflow.github_set_commit_status(len(globals.comment_on_pr_comments) > 0)
+
