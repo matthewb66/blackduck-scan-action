@@ -91,10 +91,10 @@ async def async_get_compdata(session, baseurl, compid, token, trustcert):
     # if 'componentIdentifier' not in comp:
     #     return None, None
     #
-    if not trustcert:
+    if trustcert:
         ssl = False
     else:
-        ssl = None
+        ssl = True
 
     headers = {
         'accept': "application/vnd.blackducksoftware.component-detail-4+json",
@@ -127,10 +127,10 @@ async def async_get_versions(session, compid, compdata, token, trustcert):
     else:
         return None, None
 
-    if not trustcert:
+    if trustcert:
         ssl = False
     else:
-        ssl = None
+        ssl = True
 
     # print(f'GETTING VERSION: {compid}')
     headers = {
@@ -158,10 +158,10 @@ async def async_get_versions(session, compid, compdata, token, trustcert):
 
 
 async def async_get_guidance(session, compid, compdata, token, trustcert):
-    if not trustcert:
+    if trustcert:
         ssl = False
     else:
-        ssl = None
+        ssl = True
 
     headers = {
         'accept': "application/vnd.blackducksoftware.component-detail-5+json",
@@ -198,10 +198,10 @@ async def async_get_guidance(session, compid, compdata, token, trustcert):
 
 
 async def async_get_origins(session, compid, compdata, ver, verurl, token, trustcert):
-    if not trustcert:
+    if trustcert:
         ssl = False
     else:
-        ssl = None
+        ssl = True
 
     headers = {
         'accept': "application/vnd.blackducksoftware.component-detail-5+json",

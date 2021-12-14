@@ -136,14 +136,17 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict):
                         if max_vuln_severity < vuln['overallScore']:
                             max_vuln_severity = vuln['overallScore']
                         message_markdown_footer = ''
+                        desc = vuln['description'].replace('\n', '\\\n')
                         if upgrade_ver is not None:
                             message += f"* {vuln['name']} - {vuln['vulnSeverity']} severity vulnerability violates policy '{vuln['violatingPolicies'][0]['policyName']}': *{vuln['description']}* Recommended to upgrade to version {upgrade_ver}."
-                            message_markdown += f"| {vuln['name']} | {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {vuln['description']} | "
-                            comment_on_pr += f"| {comp_name} | {vuln['name']} |  {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {vuln['description']} | {comp_version} | {upgrade_ver} |"
+                            message_markdown += f"| {vuln['name']} | {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {desc} | "
+                            # "| Component | Vulnerability | Severity |  Policy | Description | Current Ver | Upgrade to |"
+                            comment_on_pr += f"| {comp_name} | {vuln['name']} |  {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {desc} | {comp_version} | {upgrade_ver} |"
                         else:
                             message += f"* {vuln['name']} - {vuln['vulnSeverity']} severity vulnerability violates policy '{vuln['violatingPolicies'][0]['policyName']}': *{vuln['description']}* No upgrade available at this time."
-                            message_markdown += f"| {vuln['name']} | {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {vuln['description']} | "
-                            comment_on_pr += f"| {comp_name} | {vuln['name']} |  {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {vuln['description']} | {comp_version} | N/A |"
+                            message_markdown += f"| {vuln['name']} | {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {desc} | "
+                            # "| Component | Vulnerability | Severity |  Policy | Description | Current Ver | Upgrade to |"
+                            comment_on_pr += f"| {comp_name/comp_version} | {vuln['name']} |  {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {desc} | {comp_version} | N/A |"
 
                         vulns.append( {
                             "name": vuln['name'],
