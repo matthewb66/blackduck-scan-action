@@ -80,6 +80,7 @@ if __name__ == "__main__":
         globals.args.trustcert = False
 
     debug = int(globals.args.debug)
+    globals.debug = int(globals.args.debug)
 
     runargs.extend(["--blackduck.url=" + globals.args.url, "--blackduck.api.token=" + globals.args.token,
                     "--detect.blackduck.scan.mode=" + globals.args.mode,

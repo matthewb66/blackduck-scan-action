@@ -39,8 +39,8 @@ def upgrade_maven_dependency(package_file, component_name, current_version, comp
     # Key will be actual name, value will be local filename
     files_to_patch = dict()
 
-    # dirname = "snps-patch-" + component_name + "-" + component_version
-    dirname = tempfile.TemporaryDirectory()
+    #dirname = tempfile.TemporaryDirectory()
+    dirname = tempfile.mkdtemp(prefix="snps-patch-" + component_name + "-" + component_version)
 
     parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
 
@@ -65,12 +65,12 @@ def upgrade_maven_dependency(package_file, component_name, current_version, comp
             dep.find('m:version', nsmap).text = component_version
 
     xmlstr = ET.tostring(root, encoding='utf8', method='xml')
-    with open(dirname.name + "/" + package_file, "wb") as fp:
+    with open(dirname + "/" + package_file, "wb") as fp:
         fp.write(xmlstr)
 
     print(f"INFO: Updated Maven component in: {package_file}")
 
-    files_to_patch[package_file] = dirname.name + "/" + package_file
+    files_to_patch[package_file] = dirname + "/" + package_file
 
     return files_to_patch
 

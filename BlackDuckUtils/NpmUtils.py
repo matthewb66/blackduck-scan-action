@@ -29,15 +29,12 @@ def upgrade_npm_dependency(package_file, component_name, current_version, compon
     # Key will be actual name, value will be local filename
     files_to_patch = dict()
 
-    dirname = tempfile.TemporaryDirectory()
-    # dirname = "snps-patch-" + component_name + "-" + component_version
+    #dirname = tempfile.TemporaryDirectory()
+    dirname = tempfile.mkdtemp(prefix="snps-patch-" + component_name + "-" + component_version)
 
-    # use temp_dir, and when done:
-    # os.mkdir(dirname)
-    shutil.copy2(package_file, dirname.name + "/" + package_file)
+    shutil.copy2(package_file, dirname + "/" + package_file)
     origdir = os.getcwd()
-    # print(dirname.name)
-    os.chdir(dirname.name)
+    os.chdir(dirname)
 
     cmd = "npm install " + component_name + "@" + component_version
     print(f"INFO: Executing NPM to update component: {cmd}")
@@ -52,8 +49,8 @@ def upgrade_npm_dependency(package_file, component_name, current_version, compon
     # Keep files so we can commit them!
     # shutil.rmtree(dirname)
 
-    files_to_patch["package.json"] = dirname.name + "/package.json"
-    files_to_patch["package-lock.json"] = dirname.name + "/package-lock.json"
+    files_to_patch["package.json"] = dirname + "/package.json"
+    files_to_patch["package-lock.json"] = dirname + "/package-lock.json"
 
     return files_to_patch
 

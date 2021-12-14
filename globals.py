@@ -34,5 +34,5 @@ github_sha = ''
 
 
 def printdebug(dstring):
-    if False:
+    if debug:
         print(dstring)

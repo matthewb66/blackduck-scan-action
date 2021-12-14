@@ -22,7 +22,7 @@ def process_bd_scan(output):
 
     # Look up baseline data
     pvurl = bu.get_projver(globals.bd, project_baseline_name, project_baseline_version)
-    baseline_comp_cache = dict()
+    globals.baseline_comp_cache = dict()
     if globals.args.incremental_results:
         if pvurl == '':
             print(f"WARN: Unable to find project '{project_baseline_name}' \
@@ -35,12 +35,12 @@ version '{project_baseline_version}' - will not present incremental results")
             # Can't cache the component Id / external id very easily here as it's not top-level,
             # and may have multiple origins
             for comp in baseline_comps:
-                if not comp['componentName'] in baseline_comp_cache:
-                    baseline_comp_cache[comp['componentName']] = dict()
+                if not comp['componentName'] in globals.baseline_comp_cache:
+                    globals.baseline_comp_cache[comp['componentName']] = dict()
                 # if (baseline_comp_cache[comp['componentName']] == None): baseline_comp_cache[comp['componentName']] = dict()
-                baseline_comp_cache[comp['componentName']][comp['componentVersionName']] = 1
+                globals.baseline_comp_cache[comp['componentName']][comp['componentVersionName']] = 1
                 # baseline_comp_cache[comp['componentName']] = comp['componentVersionName']
-            globals.printdebug(f"DEBUG: Baseline component cache=" + json.dumps(baseline_comp_cache, indent=4))
+            globals.printdebug(f"DEBUG: Baseline component cache=" + json.dumps(globals.baseline_comp_cache, indent=4))
             globals.printdebug(f"DEBUG: Generated baseline component cache")
 
     bdio_graph, bdio_projects = bdio.get_bdio_dependency_graph(globals.args.output)
@@ -50,19 +50,48 @@ version '{project_baseline_version}' - will not present incremental results")
         sys.exit(1)
 
     rapid_scan_data, dep_dict, direct_deps_to_upgrade, pm = bu.process_scan(
-        globals.args.output, globals.bd, baseline_comp_cache,
+        globals.args.output, globals.bd, globals.baseline_comp_cache,
         globals.args.incremental_results, globals.args.upgrade_indirect)
 
     return rapid_scan_data, dep_dict, direct_deps_to_upgrade, pm
 
 
 def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict):
-    for compid in upgrade_dict.keys():
+    if globals.debug: print(f"DEBUG: Entering create_scan_outputs({rapid_scan_data},\n{upgrade_dict},\n{dep_dict}")
+
+    # JC: The change below seems  to start with just the components to be upgraded, which will lead to anything without
+    # upgrade guidance being left out. Since this loop also produces the overall report, this will miss
+    # all of those too. Switching to the above logic for now.
+
+    for item in rapid_scan_data['items']:
+        compid = item['componentIdentifier']
+        comp_ns, comp_name, comp_version = bu.parse_component_id(item['componentIdentifier'])
+
+        print(f"item={item} componentName={item['componentName']}")
+        print(f"cache={globals.baseline_comp_cache}")
+        if globals.args.incremental_results and item['componentName'] in globals.baseline_comp_cache:
+            if (item['versionName'] in globals.baseline_comp_cache[item['componentName']] and
+                    globals.baseline_comp_cache[item['componentName']][item['versionName']] == 1):
+                globals.printdebug(f"DEBUG:   Skipping component {item['componentName']} \
+        version {item['versionName']} because it was already seen in baseline")
+                continue
+            else:
+                globals.printdebug(f"DEBUG:   Including component {item['componentName']} \
+        version {item['versionName']} because it was not seen in baseline")
+
+    #for compid in upgrade_dict.keys():
+    #    if globals.debug: print(f"DEBUG: compid={compid}")
+
         comment_on_pr = ''
         message = ''
         message_markdown = ''
         # Loop the list of direct deps
-        upgrade_ver = upgrade_dict[compid]
+        if compid in upgrade_dict:
+            upgrade_ver = upgrade_dict[compid]
+        else:
+            upgrade_ver = None
+
+        if globals.debug: print(f"DEBUG: For compid={compid} upgrade_ver={upgrade_ver}")
 
         package_file, package_line = bu.detect_package_file(globals.detected_package_files, compid)
 
@@ -75,36 +104,55 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict):
             fix_pr_node['ns'] = ns
             fix_pr_node['filename'] = bu.remove_cwd_from_filename(package_file)
             fix_pr_node['comments'] = []
-            fix_pr_node['comments_markdown'] = ["| Child Component | ID | Severity | Description | Vulnerable version \
-| Upgrade to |", "| --- | --- | --- | --- | --- |"]
+            fix_pr_node['comments_markdown'] = ["| Vulnerability ID | Severity | Policy | Description |", "| --- | --- | --- | --- |"]
             fix_pr_node['comments_markdown_footer'] = ""
+            if globals.debug: print(f"DEBUG: fix_pr_node={fix_pr_node}")
 
-        children = []
-        for alldep in dep_dict.keys():
-            if compid in dep_dict[alldep]['directparents']:
-                children.append(alldep)
+        #children = []
+        #for alldep in dep_dict.keys():
+        #    if compid in dep_dict[alldep]['directparents']:
+        #        children.append(alldep)
+        #
+        #print(f"children={children}")
 
         max_vuln_severity = 0
         children_string = ''
 
-        for child in children:
-            # Find child in rapidscan data
-            child_ns, child_name, child_ver = bu.parse_component_id(child)
-            children_string += f"{child_name}/{child_ver}"
-            for rscanitem in rapid_scan_data['items']:
-                if rscanitem['componentIdentifier'] == child:
-                    for vuln in rscanitem['policyViolationVulnerabilities']:
+        if True:
+        #for child in children:
+            ## Find child in rapidscan data
+            #child_ns, child_name, child_ver = bu.parse_component_id(child)
+            #children_string += f"{child_name}/{child_ver}"
+            #for rscanitem in rapid_scan_data['items']:
+            if True:
+                #print(f"rscanitem={rscanitem}")
+                #if rscanitem['componentIdentifier'] == child:
+                if True:
+                    #print(f"rscanitem=={child}")
+                    vulns = []
+                    #for vuln in rscanitem['policyViolationVulnerabilities']:
+                    for vuln in item['policyViolationVulnerabilities']:
+                        print(f"vuln={vuln}")
                         if max_vuln_severity < vuln['overallScore']:
                             max_vuln_severity = vuln['overallScore']
                         message_markdown_footer = ''
                         if upgrade_ver is not None:
                             message += f"* {vuln['name']} - {vuln['vulnSeverity']} severity vulnerability violates policy '{vuln['violatingPolicies'][0]['policyName']}': *{vuln['description']}* Recommended to upgrade to version {upgrade_ver}."
-                            message_markdown += f"| {vuln['name']} | {vuln['vulnSeverity']} | {vuln['description']} | {child_ver} | {upgrade_ver} | "
-                            comment_on_pr += f"| {vuln['name']} | {child} | {vuln['name']} |  {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {vuln['description']} | {child_ver} | {upgrade_ver} |"
+                            message_markdown += f"| {vuln['name']} | {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {vuln['description']} | "
+                            comment_on_pr += f"| {comp_name} | {vuln['name']} |  {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {vuln['description']} | {comp_version} | {upgrade_ver} |"
                         else:
                             message += f"* {vuln['name']} - {vuln['vulnSeverity']} severity vulnerability violates policy '{vuln['violatingPolicies'][0]['policyName']}': *{vuln['description']}* No upgrade available at this time."
-                            message_markdown += f"| {vuln['name']} | {vuln['vulnSeverity']} | {vuln['description']} | {child_ver} | {upgrade_ver} | "
-                            comment_on_pr += f"| {vuln['name']} | {child} | {vuln['name']} | {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {vuln['description']} | {child_ver} | N/A |"
+                            message_markdown += f"| {vuln['name']} | {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {vuln['description']} | "
+                            comment_on_pr += f"| {comp_name} | {vuln['name']} |  {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {vuln['description']} | {comp_version} | N/A |"
+
+                        vulns.append( {
+                            "name": vuln['name'],
+                            "severity": vuln['vulnSeverity'],
+                            "policy": vuln['violatingPolicies'][0]['policyName']
+                        })
+                    fix_pr_node['vulns'] = vulns
+                    print(f"fix_pr_node222={fix_pr_node}")
+
         #
         #     if dep_dict[compid['componentIdentifier']]['deptype'] == "Direct":
         message = message + f"Fix in package file '{bu.remove_cwd_from_filename(package_file)}'"
@@ -115,7 +163,8 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict):
         #             message_markdown_footer = f"**Find dependency in {dep_dict[compid['componentIdentifier']]['paths'][0]}**"
         #
         #     print("INFO: " + message)
-        globals.comment_on_pr_comments.append(comment_on_pr)
+        if (comment_on_pr != ''):
+            globals.comment_on_pr_comments.append(comment_on_pr)
 
         # Save message to include in Fix PR
         if upgrade_ver is not None:
@@ -273,6 +322,8 @@ def main_process(output):
     # Test upgrades using Detect Rapid scans
     good_upgrades = test_upgrades(upgrade_dict, direct_deps_to_upgrade, pm)
 
+    print("Create scan outputs")
+
     # Output the data
     create_scan_outputs(rapid_scan_data, good_upgrades, dep_dict)
 
@@ -293,5 +344,6 @@ def main_process(output):
     if globals.args.comment_on_pr and len(globals.comment_on_pr_comments) > 0:
         github_workflow.github_pr_comment()
 
-    if len(globals.comment_on_pr_comments) > 0:
-        github_workflow.github_comment_on_pr_comments()
+    # Set failure or success
+    github_workflow.github_set_commit_status(len(globals.comment_on_pr_comments) > 0)
+
