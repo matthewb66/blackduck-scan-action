@@ -225,6 +225,5 @@ def github_set_commit_status(is_failure):
             context="Synopsys Black Duck"
         )
 
-
     globals.printdebug(f"DEBUG: Status:")
     globals.printdebug(status)

@@ -107,6 +107,8 @@ if __name__ == "__main__":
     if (globals.args.mode == "intelligent"):
         sys.exit(0)
 
+    # Todo - Add proxy support
+
     globals.bd = Client(token=globals.args.token,
                 base_url=globals.args.url,
                 verify=globals.args.trustcert,  # TLS certificate verification

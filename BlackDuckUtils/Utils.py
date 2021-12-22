@@ -327,6 +327,9 @@ def process_scan(scan_folder, bd, baseline_comp_cache, incremental, upgrade_indi
 
     rapid_scan_data = bo.get_rapid_scan_results(scan_folder, bd)
 
+    if rapid_scan_data is None or 'items' not in rapid_scan_data:
+        return None, None, None, ''
+
     dep_dict, direct_deps_to_upgrade, pm = bo.process_rapid_scan(rapid_scan_data['items'], incremental,
                                                                  baseline_comp_cache, bdio_graph, bdio_projects,
                                                                  upgrade_indirect)
