@@ -235,13 +235,14 @@ def attempt_indirect_upgrade(pm, deps_list, upgrade_dict, detect_jar, connectopt
     # run rapid scan to check
     # print(f'Vuln Deps = {json.dumps(deps_list, indent=4)}')
 
-    get_detect_jar = True
+    get_detect = True
     if detect_jar != '' and os.path.isfile(detect_jar):
-        get_detect_jar = False
+        get_detect = False
     elif globals.detect_jar != '' and os.path.isfile(detect_jar):
-        get_detect_jar = False
+        get_detect = False
+        detect_jar = globals.detect_jar
 
-    if get_detect_jar:
+    if get_detect:
         detect_jar = get_detect_jar()
 
     # dirname = "snps-upgrade-" + direct_name + "-" + direct_version

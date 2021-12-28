@@ -146,7 +146,7 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
         if not create_csproj(test_upgrade_list):
             return None
 
-        pvurl, projname, vername, retval = bu.run_detect('upgrade-tests', detect_connection_opts, False)
+        pvurl, projname, vername, retval = bu.run_detect(detect_jar, detect_connection_opts, False)
 
         if retval == 3:
             # Policy violation returned

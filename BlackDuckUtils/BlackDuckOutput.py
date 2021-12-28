@@ -3,15 +3,9 @@ import glob
 # import hashlib
 import json
 import os
-# import random
-# import re
-# import shutil
 import sys
-# import zipfile
 import globals
-import networkx as nx
 
-# from blackduck import Client
 from BlackDuckUtils import Utils as bu
 from BlackDuckUtils import NpmUtils
 from BlackDuckUtils import MavenUtils
@@ -31,15 +25,11 @@ def get_blackduck_status(output_dir):
         output_status_data = json.load(f)
 
     detected_package_files = []
-    valid_detectors = ['NPM', 'MAVEN', 'NUGET']
-    found_valid_detectors = 0
+    found_detectors = 0
     for detector in output_status_data['detectors']:
         # Reverse order so that we get the priority from detect
-        if detector['detectorType'] not in valid_detectors and detector['detectorType'] != 'GIT':
-            print(f"ERROR: Unsupported package manager encountered {detector['detectorType']} - this scanaction supports {valid_detectors}")
-            sys.exit(2)
-        else:
-            found_valid_detectors += 1
+        if detector['detectorType'] != 'GIT':
+            found_detectors += 1
         for explanation in reversed(detector['explanations']):
             if str.startswith(explanation, "Found file: "):
                 package_file = explanation[len("Found file: "):]
@@ -47,7 +37,7 @@ def get_blackduck_status(output_dir):
                     detected_package_files.append(package_file)
                     globals.printdebug(f"DEBUG: Explanation: {explanation} File: {package_file}")
 
-    if found_valid_detectors == 0:
+    if found_detectors == 0:
         print(f"WARNING: No package manager scan identified (empty scan?) - Exiting")
         sys.exit(2)
 
