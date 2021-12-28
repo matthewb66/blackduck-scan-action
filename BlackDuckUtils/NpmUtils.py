@@ -62,8 +62,8 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
     detect_connection_opts.append("--detect.output.path=upgrade-tests")
     detect_connection_opts.append("--detect.cleanup=false")
 
-    print('POSSIBLE UPGRADES:')
-    print(json.dumps(upgrade_dict, indent=4))
+    # print('POSSIBLE UPGRADES:')
+    # print(json.dumps(upgrade_dict, indent=4))
 
     # vulnerable_upgrade_list = []
     test_dirdeps = deps_list
@@ -91,7 +91,7 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
             # print(f'DEBUG: Upgrade dep = {comp}@{version}')
 
             cmd = f"npm install {comp}@{upgrade_version} --package-lock-only >/dev/null 2>&1"
-            print(cmd)
+            # print(cmd)
             ret = os.system(cmd)
 
             if ret == 0:

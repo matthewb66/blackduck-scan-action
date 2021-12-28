@@ -180,7 +180,7 @@ version {item['versionName']} because it was not seen in baseline")
                         # Then log the direct dependencies directly
                         if direct_dep != '' and dep_vulnerable and direct_dep not in direct_deps_to_upgrade.keys():
                             direct_deps_to_upgrade[direct_dep] = item['componentIdentifier']
-                            print(f'TRANSITIVE ANCESTOR VULNERABLE: {direct_dep} (child {http_name})')
+                            # print(f'TRANSITIVE ANCESTOR VULNERABLE: {direct_dep} (child {http_name})')
 
                     dep_dict[item['componentIdentifier']]['paths'] = dependency_paths
         else:
@@ -188,7 +188,7 @@ version {item['versionName']} because it was not seen in baseline")
             direct_dep = bu.normalise_dep(pm, item['componentIdentifier'])
             if direct_dep not in direct_deps_to_upgrade.keys() and dep_vulnerable:
                 direct_deps_to_upgrade[direct_dep] = item['componentIdentifier']
-                print('DIRECT DEP VULNERABLE: ' + direct_dep)
+                # print('DIRECT DEP VULNERABLE: ' + direct_dep)
             #
             # Need to use upgrade guidance to test for upgrade
             dep_dict[item['componentIdentifier']]['deptype'] = 'Direct'

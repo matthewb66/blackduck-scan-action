@@ -189,7 +189,7 @@ def github_pr_comment():
     #
     # for comment in globals.comment_on_pr_comments:
     #     comments_markdown.append(comment)
-    comments_markdown = "Synopsys Black Duck XXXX" + "\n".join(globals.comment_on_pr_comments)
+    comments_markdown = "# Synopsys Black Duck XXXX" + "\n".join(globals.comment_on_pr_comments)
 
     if existing_comment is not None:
         globals.printdebug(f"DEBUG: Update/edit existing comment for PR #{pull_number_for_sha}\n{comments_markdown}")

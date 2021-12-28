@@ -92,7 +92,7 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
                     if max_vuln_severity < vuln['overallScore']:
                         max_vuln_severity = vuln['overallScore']
 
-                    desc = vuln['description'].replace('\n', ' ')
+                    desc = vuln['description'].replace('\n', ' ')[:200]
                     # vulns.append({
                     #     "compid": childid,
                     #     "name": vuln['name'],
@@ -101,8 +101,12 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
                     #     "policy": vuln['violatingPolicies'][0]['policyName']
                     # })
                     # | Parent | Component | Vulnerability | Severity |  Policy | Description | Current Ver |
+                    vulnname = vuln['name']
+                    if 'BDSA' in vulnname:
+                        vulnname = f"[{vulnname}]({globals.args.url}/api/vulnerabilities/{vulnname}/overview)"
+
                     cvulns_table.append(
-                        f"| {parent_name}/{parent_ver} | {child_name}/{child_ver} | {vuln['name']}"
+                        f"| {parent_name}/{parent_ver} | {child_name}/{child_ver} | {vulnname}"
                         f"| {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {desc} "
                         f"| {child_ver} | "
                     )
@@ -114,15 +118,18 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
 
     md_directdeps_table = [
         "",
+        "Direct Dependencies with vulnerabilities (in direct or transitive children):",
+        "",
         "| Direct Dependency | Max Direct Vuln Severity | Num Direct Vulns | Max Indirect Vuln Severity "
         "| Num Indirect Vulns | Upgrade to |",
         "| --- | --- | --- | --- | --- | --- |"
     ]
     md_vulns_header = [
         "",
-        "| Parent | Component | Vulnerability | Severity |  Policy | Description | Current Ver |",
+        "| Parent | Child Component | Vulnerability | Severity |  Policy | Description | Current Ver |",
         "| --- | --- | --- | --- | --- | --- | --- |"
     ]
+
     md_all_vulns_table = md_vulns_header[:]
 
     # for item in rapid_scan_data['items']:
@@ -278,7 +285,7 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
             a_comp = compid.replace(':', '@').replace('/', '@').split('@')
             globals.fix_pr_data[f"{a_comp[1]}@{a_comp[2]}"] = fix_pr_node
 
-    globals.comment_on_pr_comments = md_directdeps_table + globals.comment_on_pr_comments
+    globals.comment_on_pr_comments = md_directdeps_table + ['\n'] + globals.comment_on_pr_comments
 
 
 def test_upgrades(upgrade_dict, deplist, pm):
@@ -345,6 +352,7 @@ def main_process(output, runargs):
         print('ERROR: Unable to connect to Black Duck server - check credentials')
 
     # Process the Rapid scan
+    print('Processing scan data ...')
     rapid_scan_data, dep_dict, direct_deps_to_upgrade, pm = process_bd_scan(output)
 
     if rapid_scan_data is None:
@@ -355,11 +363,11 @@ def main_process(output, runargs):
         # check for indirect upgrades
         #
         # Get component data via async calls
-        print('INFO: Checking possible upgrades ...')
         guidance_dict, version_dict, origin_dict = asyncdata.get_data_async(direct_deps_to_upgrade, globals.bd,
                                                                             globals.args.trustcert)
 
         # Work out possible upgrades
+        print('Validating upgrades ...')
         upgrade_dict = {}
         for dep in direct_deps_to_upgrade:
             upgrade_dict[dep] = bu.find_upgrade_versions(dep, version_dict[dep], origin_dict, guidance_dict[dep],
@@ -374,7 +382,7 @@ def main_process(output, runargs):
     create_scan_outputs(rapid_scan_data, good_upgrades, dep_dict, direct_deps_to_upgrade)
 
     if globals.args.sarif != '':
-        print(f'INFO: Writing sarif output file {globals.args.sarif} ...')
+        print(f'Writing sarif output file {globals.args.sarif} ...')
         write_sarif(globals.args.sarif)
 
     globals.github_token = os.getenv("GITHUB_TOKEN")
@@ -385,13 +393,13 @@ def main_process(output, runargs):
 
     # Optionally generate Fix PR
     if globals.args.fix_pr and len(globals.fix_pr_data.values()) > 0:
-        print('INFO: Will create fix pull request ...')
+        print('Creating fix pull request ...')
         github_workflow.github_fix_pr()
         github_workflow.github_set_commit_status(len(globals.comment_on_pr_comments) > 0)
 
     # Optionally comment on the pull request this is for
     if globals.args.comment_on_pr and len(globals.comment_on_pr_comments) > 0:
-        print('INFO: Will create comment on existing pull request ...')
+        print('Creating comment on existing pull request ...')
         github_workflow.github_pr_comment()
         github_workflow.github_set_commit_status(len(globals.comment_on_pr_comments) > 0)
 

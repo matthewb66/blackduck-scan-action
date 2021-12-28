@@ -114,8 +114,8 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
     detect_connection_opts.append("--detect.detector.buildless=true")
     detect_connection_opts.append("--detect.cleanup=false")
 
-    print('POSSIBLE UPGRADES NUGET:')
-    print(json.dumps(upgrade_dict, indent=4))
+    # print('POSSIBLE UPGRADES NUGET:')
+    # print(json.dumps(upgrade_dict, indent=4))
 
     # vulnerable_upgrade_list = []
     test_dirdeps = deps_list
