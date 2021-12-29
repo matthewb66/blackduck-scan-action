@@ -18,7 +18,7 @@ async def async_main(compidlist, bd, trustcert):
             compdata_task = asyncio.ensure_future(async_get_compdata(session, bd.base_url, compid, token, trustcert))
             compdata_tasks.append(compdata_task)
 
-        print('Getting componentids ... ')
+        print('Getting componentid data ... ')
         # print(f'compidlist: {compidlist}')
         all_compdata = dict(await asyncio.gather(*compdata_tasks))
         await asyncio.sleep(0.25)
@@ -35,7 +35,7 @@ async def async_main(compidlist, bd, trustcert):
             versions_task = asyncio.ensure_future(async_get_versions(session, compid, all_compdata, token, trustcert))
             versions_tasks.append(versions_task)
 
-        print('Getting component versions & upgrade guidance ... ')
+        print('Getting component versions & upgrade guidance data ... ')
         all_upgradeguidances = dict(await asyncio.gather(*upgradeguidance_tasks))
         all_versions = dict(await asyncio.gather(*versions_tasks))
         await asyncio.sleep(0.25)
@@ -79,7 +79,7 @@ async def async_main(compidlist, bd, trustcert):
                                                                        vers, versurl, token, trustcert))
                 origins_tasks.append(origins_task)
 
-        print('Getting version origins ... ')
+        print('Getting version origin data ... ')
         all_origins = dict(await asyncio.gather(*origins_tasks))
         await asyncio.sleep(0.25)
 

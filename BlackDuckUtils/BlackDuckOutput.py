@@ -3,15 +3,9 @@ import glob
 # import hashlib
 import json
 import os
-# import random
-# import re
-# import shutil
 import sys
-# import zipfile
 import globals
-import networkx as nx
 
-# from blackduck import Client
 from BlackDuckUtils import Utils as bu
 from BlackDuckUtils import NpmUtils
 from BlackDuckUtils import MavenUtils
@@ -31,14 +25,21 @@ def get_blackduck_status(output_dir):
         output_status_data = json.load(f)
 
     detected_package_files = []
+    found_detectors = 0
     for detector in output_status_data['detectors']:
         # Reverse order so that we get the priority from detect
+        if detector['detectorType'] != 'GIT':
+            found_detectors += 1
         for explanation in reversed(detector['explanations']):
             if str.startswith(explanation, "Found file: "):
                 package_file = explanation[len("Found file: "):]
                 if os.path.isfile(package_file):
                     detected_package_files.append(package_file)
                     globals.printdebug(f"DEBUG: Explanation: {explanation} File: {package_file}")
+
+    if found_detectors == 0:
+        print(f"WARNING: No package manager scan identified (empty scan?) - Exiting")
+        sys.exit(2)
 
     # Find project name and version to use in looking up baseline data
     project_baseline_name = output_status_data['projectName']
@@ -179,7 +180,7 @@ version {item['versionName']} because it was not seen in baseline")
                         # Then log the direct dependencies directly
                         if direct_dep != '' and dep_vulnerable and direct_dep not in direct_deps_to_upgrade.keys():
                             direct_deps_to_upgrade[direct_dep] = item['componentIdentifier']
-                            print(f'TRANSITIVE ANCESTOR VULNERABLE: {direct_dep} (child {http_name})')
+                            # print(f'TRANSITIVE ANCESTOR VULNERABLE: {direct_dep} (child {http_name})')
 
                     dep_dict[item['componentIdentifier']]['paths'] = dependency_paths
         else:
@@ -187,7 +188,7 @@ version {item['versionName']} because it was not seen in baseline")
             direct_dep = bu.normalise_dep(pm, item['componentIdentifier'])
             if direct_dep not in direct_deps_to_upgrade.keys() and dep_vulnerable:
                 direct_deps_to_upgrade[direct_dep] = item['componentIdentifier']
-                print('DIRECT DEP VULNERABLE: ' + direct_dep)
+                # print('DIRECT DEP VULNERABLE: ' + direct_dep)
             #
             # Need to use upgrade guidance to test for upgrade
             dep_dict[item['componentIdentifier']]['deptype'] = 'Direct'

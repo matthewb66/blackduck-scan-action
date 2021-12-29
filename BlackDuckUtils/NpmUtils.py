@@ -29,7 +29,7 @@ def upgrade_npm_dependency(package_file, component_name, current_version, compon
     # Key will be actual name, value will be local filename
     files_to_patch = dict()
 
-    #dirname = tempfile.TemporaryDirectory()
+    # dirname = tempfile.TemporaryDirectory()
     dirname = tempfile.mkdtemp(prefix="snps-patch-" + component_name + "-" + component_version)
 
     shutil.copy2(package_file, dirname + "/" + package_file)
@@ -62,8 +62,8 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
     detect_connection_opts.append("--detect.output.path=upgrade-tests")
     detect_connection_opts.append("--detect.cleanup=false")
 
-    print('POSSIBLE UPGRADES:')
-    print(json.dumps(upgrade_dict, indent=4))
+    # print('POSSIBLE UPGRADES:')
+    # print(json.dumps(upgrade_dict, indent=4))
 
     # vulnerable_upgrade_list = []
     test_dirdeps = deps_list
@@ -91,7 +91,7 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
             # print(f'DEBUG: Upgrade dep = {comp}@{version}')
 
             cmd = f"npm install {comp}@{upgrade_version} --package-lock-only >/dev/null 2>&1"
-            print(cmd)
+            # print(cmd)
             ret = os.system(cmd)
 
             if ret == 0:
@@ -105,7 +105,7 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
             continue
         print(f'Validating {len(installed_packages)} potential upgrades')
 
-        pvurl, projname, vername, retval = bu.run_detect('upgrade-tests', detect_connection_opts, False)
+        pvurl, projname, vername, retval = bu.run_detect(detect_jar, detect_connection_opts, False)
 
         if retval == 3:
             # Policy violation returned

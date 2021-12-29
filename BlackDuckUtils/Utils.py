@@ -235,13 +235,14 @@ def attempt_indirect_upgrade(pm, deps_list, upgrade_dict, detect_jar, connectopt
     # run rapid scan to check
     # print(f'Vuln Deps = {json.dumps(deps_list, indent=4)}')
 
-    get_detect_jar = True
+    get_detect = True
     if detect_jar != '' and os.path.isfile(detect_jar):
-        get_detect_jar = False
+        get_detect = False
     elif globals.detect_jar != '' and os.path.isfile(detect_jar):
-        get_detect_jar = False
+        get_detect = False
+        detect_jar = globals.detect_jar
 
-    if get_detect_jar:
+    if get_detect:
         detect_jar = get_detect_jar()
 
     # dirname = "snps-upgrade-" + direct_name + "-" + direct_version
@@ -326,6 +327,9 @@ def process_scan(scan_folder, bd, baseline_comp_cache, incremental, upgrade_indi
         sys.exit(1)
 
     rapid_scan_data = bo.get_rapid_scan_results(scan_folder, bd)
+
+    if rapid_scan_data is None or 'items' not in rapid_scan_data:
+        return None, None, None, ''
 
     dep_dict, direct_deps_to_upgrade, pm = bo.process_rapid_scan(rapid_scan_data['items'], incremental,
                                                                  baseline_comp_cache, bdio_graph, bdio_projects,

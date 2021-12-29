@@ -23,7 +23,7 @@ class MyTreeBuilder(ET.TreeBuilder):
 def parse_component_id(component_id):
     # Example: maven:org.springframework:spring-webmvc:4.2.3.RELEASE
     comp_ns = component_id.split(':')[0]
-    comp_org = component_id.split(':')[1]
+    # comp_org = component_id.split(':')[1]
     comp_name = component_id.split(':')[2]
     comp_version = component_id.split(':')[3]
 
@@ -39,7 +39,7 @@ def upgrade_maven_dependency(package_file, component_name, current_version, comp
     # Key will be actual name, value will be local filename
     files_to_patch = dict()
 
-    #dirname = tempfile.TemporaryDirectory()
+    # dirname = tempfile.TemporaryDirectory()
     dirname = tempfile.mkdtemp(prefix="snps-patch-" + component_name + "-" + component_version)
 
     parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
@@ -126,8 +126,8 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
     detect_connection_opts.append(f"--detect.output.path=upgrade-tests")
     detect_connection_opts.append("--detect.cleanup=false")
 
-    print('POSSIBLE UPGRADES:')
-    print(json.dumps(upgrade_dict, indent=4))
+    # print('POSSIBLE UPGRADES:')
+    # print(json.dumps(upgrade_dict, indent=4))
 
     # vulnerable_upgrade_list = []
     test_dirdeps = deps_list
@@ -158,7 +158,7 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
         if not create_pom(test_upgrade_list):
             return None
 
-        pvurl, projname, vername, retval = bu.run_detect('upgrade-tests', detect_connection_opts, False)
+        pvurl, projname, vername, retval = bu.run_detect(detect_jar, detect_connection_opts, False)
 
         if retval == 3:
             # Policy violation returned
