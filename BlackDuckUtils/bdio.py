@@ -8,7 +8,7 @@ import os
 # import shutil
 import sys
 import zipfile
-import globals
+from BlackDuckUtils import globals
 
 import networkx as nx
 

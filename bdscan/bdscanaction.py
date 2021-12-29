@@ -3,12 +3,11 @@
 import argparse
 import sys
 import os
-import globals
+from bdscan import globals
+from bdscan import scan
 
-import scan
 
-
-if __name__ == "__main__":
+def main():
     # os.chdir('/Users/mbrad/working/duck_hub_ORI')
     parser = argparse.ArgumentParser(description="Run Black Duck Security Scan")
     parser.add_argument('--debug', default=0, help='set debug level [0-9]')

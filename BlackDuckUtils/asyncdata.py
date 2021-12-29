@@ -1,6 +1,6 @@
 import aiohttp
 import asyncio
-import globals
+from BlackDuckUtils import globals
 from BlackDuckUtils import Utils as bu
 
 

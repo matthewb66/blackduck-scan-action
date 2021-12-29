@@ -11,8 +11,8 @@ from BlackDuckUtils import Utils as bu
 from BlackDuckUtils import bdio as bdio
 from BlackDuckUtils import asyncdata as asyncdata
 
-import globals
-import github_workflow
+from bdscan import globals
+from bdscan import github_workflow
 
 
 def process_bd_scan(output):
