@@ -210,10 +210,10 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
         md_directdeps_list.append(
             [
                 f"{comp_name}/{comp_version}",
-                dir_max_sev,
                 dir_vuln_count,
-                children_max_sev,
+                dir_max_sev,
                 children_num_vulns,
+                children_max_sev,
                 uver,
             ]
         )
