@@ -2,6 +2,7 @@ import json
 import sys
 import hashlib
 import os
+from operator import itemgetter
 
 from blackduck import Client
 
@@ -56,6 +57,16 @@ version '{project_baseline_version}' - will not present incremental results")
 
 
 def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_upgrade):
+    def vuln_color(value):
+        if value > 9:
+            return f'<span style="color:DarkRed">{str(value)}</span>'
+        elif value > 7:
+            return f'<span style="color:Red">{str(value)}</span>'
+        elif value > 5:
+            return f'<span style="color:Orange">{str(value)}</span>'
+        else:
+            return f'{str(value)}'
+
     def count_vulns(parentid, childid, existing_vulns):
         if parentid != '':
             parent_ns, parent_name, parent_ver = bu.parse_component_id(parentid)
@@ -76,10 +87,8 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
                 version {child_ver} because it was not seen in baseline")
 
         vuln_count = 0
-        # vulns = []
         max_vuln_severity = 0
-        cvulns_table = []
-        # cvulns_list = []
+        cvulns_list = []
 
         for rscanitem in rapid_scan_data['items']:
             if rscanitem['componentIdentifier'] == childid:
@@ -101,34 +110,47 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
                     #     "policy": vuln['violatingPolicies'][0]['policyName']
                     # })
                     # | Parent | Component | Vulnerability | Severity |  Policy | Description | Current Ver |
-                    vulnname = vuln['name']
-                    if 'BDSA' in vulnname:
-                        vulnname = f"[{vulnname}]({globals.args.url}/api/vulnerabilities/{vulnname}/overview)"
+                    vulnname = f"[{vuln['name']}]({globals.args.url}/api/vulnerabilities/{vuln['name']}/overview)"
 
-                    cvulns_table.append(
-                        f"| {parent_name}/{parent_ver} | {child_name}/{child_ver} | {vulnname}"
-                        f"| {vuln['vulnSeverity']} | {vuln['violatingPolicies'][0]['policyName']} | {desc} "
-                        f"| {child_ver} | "
+                    cvulns_list.append(
+                        [
+                            f"{parent_name}/{parent_ver}",
+                            f"{child_name}/{child_ver}",
+                            vulnname,
+                            vuln['overallScore'],
+                            vuln['violatingPolicies'][0]['policyName'],
+                            desc,
+                            child_ver,
+                        ]
                     )
                 break
 
+        cvulns_list = sorted(cvulns_list, key=itemgetter(3), reverse=True)
+
+        cvulns_table = []
+        for crow in cvulns_list:
+            vscore = vuln_color(crow[3])
+            cvulns_table.append(f"| {crow[0]} | {crow[1]} | {crow[2]} | {vscore} | {crow[4]} | {crow[5]} | {crow[6]} |")
+
         return existing_vulns, vuln_count, max_vuln_severity, cvulns_table
+    ##### End of count_vulns()
 
     globals.printdebug(f"DEBUG: Entering create_scan_outputs({rapid_scan_data},\n{upgrade_dict},\n{dep_dict}")
 
-    md_directdeps_table = [
+    md_directdeps_header = [
         "",
-        "Direct Dependencies with vulnerabilities (in direct or transitive children):",
+        "## Direct Dependencies with vulnerabilities (in direct or transitive children):",
         "",
-        "| Direct Dependency | Max Direct Vuln Severity | Num Direct Vulns | Max Indirect Vuln Severity "
-        "| Num Indirect Vulns | Upgrade to |",
+        f"| Direct Dependency | Num Direct Vulns | Max Direct Vuln Severity | Num Indirect Vulns "
+        f"| Max Indirect Vuln Severity | Upgrade to |",
         "| --- | --- | --- | --- | --- | --- |"
     ]
     md_vulns_header = [
         "",
-        "| Parent | Child Component | Vulnerability | Severity |  Policy | Description | Current Ver |",
+        "| Parent | Child Component | Vulnerability | Score |  Policy | Description | Current Ver |",
         "| --- | --- | --- | --- | --- | --- | --- |"
     ]
+    md_directdeps_list = []
 
     md_all_vulns_table = md_vulns_header[:]
 
@@ -154,7 +176,6 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
 
         md_comp_vulns_table = md_vulns_header[:]
         dir_vulns, dir_vuln_count, dir_max_sev, md_comp_vtable = count_vulns('', compid, [])
-
         md_all_vulns_table.extend(md_comp_vtable)
         md_comp_vulns_table.extend(md_comp_vtable)
 
@@ -170,6 +191,7 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
             else:
                 continue
 
+            md_cvulns_table = []
             dir_vulns, cvuln_count, cmax_sev, md_cvulns_table = count_vulns(compid, childid, dir_vulns)
             md_comp_vulns_table.extend(md_cvulns_table)
             md_all_vulns_table.extend(md_cvulns_table)
@@ -185,22 +207,33 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
         # pfile = bu.remove_cwd_from_filename(package_file)
 
         # | Direct Dependency | Max Vuln Severity | No. of Vulns | Upgrade to | File |
-        md_directdeps_table.append(f"| {comp_name}/{comp_version} | {dir_max_sev} | {dir_vuln_count} "
-                                   f"| {children_max_sev} | {children_num_vulns} | {uver} |")
+        md_directdeps_list.append(
+            [
+                f"{comp_name}/{comp_version}",
+                dir_max_sev,
+                dir_vuln_count,
+                children_max_sev,
+                children_num_vulns,
+                uver,
+            ]
+        )
 
         if dir_vuln_count > 0 and children_num_vulns > 0:
-            stext = f"The direct dependency {comp_name}/{comp_version} has {dir_vuln_count} vulnerabilities (max " \
+            stext = f"## {comp_name}/{comp_version}" \
+                    f"The direct dependency {comp_name}/{comp_version} has {dir_vuln_count} vulnerabilities (max " \
                     f"score {dir_max_sev}) and {children_num_vulns} vulnerabilities in child dependencies (max score " \
                     f"{children_max_sev})."
             ltext = stext + f"\n\nVulnerabilities for {comp_name}/{comp_version}:\n\n" + \
                 '\n'.join(md_comp_vulns_table) + '\n'
         elif dir_vuln_count > 0 and children_num_vulns == 0:
-            stext = f"The direct dependency {comp_name}/{comp_version} has {dir_vuln_count} vulnerabilities (max " \
+            stext = f"## {comp_name}/{comp_version}" \
+                    f"The direct dependency {comp_name}/{comp_version} has {dir_vuln_count} vulnerabilities (max " \
                     f"score {dir_max_sev})."
             ltext = stext + f"\n\nVulnerabilities for {comp_name}/{comp_version}:\n\n" + \
                 '\n'.join(md_comp_vulns_table) + '\n'
         elif children_num_vulns > 0:
-            stext = f"The direct dependency {comp_name}/{comp_version} has {children_num_vulns} vulnerabilities in " \
+            stext = f"## {comp_name}/{comp_version}" \
+                    f"The direct dependency {comp_name}/{comp_version} has {children_num_vulns} vulnerabilities in " \
                     f"child dependencies (max score {children_max_sev})."
             ltext = stext + f"\n\nVulnerabilities for {comp_name}/{comp_version}:\n\n" + \
                 '\n'.join(md_comp_vulns_table) + '\n'
@@ -284,6 +317,16 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
         if upgrade_ver is not None:
             a_comp = compid.replace(':', '@').replace('/', '@').split('@')
             globals.fix_pr_data[f"{a_comp[1]}@{a_comp[2]}"] = fix_pr_node
+
+    md_directdeps_list = sorted(md_directdeps_list, key=itemgetter(2), reverse=True)
+    md_directdeps_list = sorted(md_directdeps_list, key=itemgetter(4), reverse=True)
+
+    md_directdeps_table = md_directdeps_header
+    for crow in md_directdeps_list:
+        # | Direct Dependency | Num Direct Vulns | Max Direct Vuln Severity | Num Indirect Vulns
+        # | Max Indirect Vuln Severity | Upgrade to |",
+        md_directdeps_table.append(f"| {crow[0]} | {crow[1]} | {vuln_color(crow[2])} | {crow[3]} "
+                                   f"| {vuln_color(crow[4])} | {crow[5]} |")
 
     globals.comment_on_pr_comments = md_directdeps_table + ['\n'] + globals.comment_on_pr_comments
 

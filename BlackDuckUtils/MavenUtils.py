@@ -23,7 +23,7 @@ class MyTreeBuilder(ET.TreeBuilder):
 def parse_component_id(component_id):
     # Example: maven:org.springframework:spring-webmvc:4.2.3.RELEASE
     comp_ns = component_id.split(':')[0]
-    comp_org = component_id.split(':')[1]
+    # comp_org = component_id.split(':')[1]
     comp_name = component_id.split(':')[2]
     comp_version = component_id.split(':')[3]
 
