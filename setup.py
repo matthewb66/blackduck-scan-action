@@ -32,6 +32,6 @@ setuptools.setup(
     ],
     python_requires='>=3.0',
     entry_points={
-        'console_scripts': ['blackduck-scan-action=main'],
+        'console_scripts': ['blackduck-scan-action=bdscan.bdscanaction:main'],
     },
 )

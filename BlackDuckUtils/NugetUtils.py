@@ -1,7 +1,7 @@
 import os
 import re
 # import shutil
-import globals
+from BlackDuckUtils import globals
 # import sys
 import tempfile
 import json
@@ -35,7 +35,7 @@ def convert_to_bdio(component_id):
     return bdio_name
 
 
-def upgrade_maven_dependency(package_file, component_name, current_version, component_version):
+def upgrade_nuget_dependency(package_file, component_name, current_version, component_version):
     # Key will be actual name, value will be local filename
     files_to_patch = dict()
 
@@ -54,15 +54,13 @@ def upgrade_maven_dependency(package_file, component_name, current_version, comp
 
     globals.printdebug(f"DEBUG: Search for maven dependency {component_name}@{component_version}")
 
-    for dep in root.findall('.//m:dependencies/m:dependency', nsmap):
-        groupId = dep.find('m:groupId', nsmap).text
-        artifactId = dep.find('m:artifactId', nsmap).text
-        version = dep.find('m:version', nsmap).text
+    for dep in root.findall('.//m:ItemGroup', nsmap):
+        packageref = dep.find('m:PackageReference', nsmap).text
 
-        # TODO Also include organization name?
-        if artifactId == component_name:
-            globals.printdebug(f"DEBUG:   Found GroupId={groupId} ArtifactId={artifactId} Version={version}")
-            dep.find('m:version', nsmap).text = component_version
+        # # TODO Also include organization name?
+        # if artifactId == component_name:
+        #     globals.printdebug(f"DEBUG:   Found GroupId={groupId} ArtifactId={artifactId} Version={version}")
+        #     dep.find('m:version', nsmap).text = component_version
 
     xmlstr = ET.tostring(root, encoding='utf8', method='xml')
     with open(dirname + "/" + package_file, "wb") as fp:

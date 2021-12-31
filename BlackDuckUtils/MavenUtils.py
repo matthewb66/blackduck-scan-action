@@ -1,7 +1,7 @@
 import os
 import re
 # import shutil
-import globals
+from BlackDuckUtils import globals
 # import sys
 import tempfile
 import json

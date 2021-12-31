@@ -3,12 +3,11 @@
 import argparse
 import sys
 import os
-import globals
+from bdscan import globals
+from bdscan import scan
 
-import scan
 
-
-if __name__ == "__main__":
+def main():
     # os.chdir('/Users/mbrad/working/duck_hub_ORI')
     parser = argparse.ArgumentParser(description="Run Black Duck Security Scan")
     parser.add_argument('--debug', default=0, help='set debug level [0-9]')
@@ -25,12 +24,12 @@ if __name__ == "__main__":
                         help="Offer upgrades to major versions, true or false")
     parser.add_argument("--comment_on_pr", type=str, default="false",
                         help="Generate a comment on pull request, true or false")
-    parser.add_argument("--sarif", type=str, default="blackduck-sarif.json", help="SARIF output file")
+    parser.add_argument("--sarif", type=str, help="SARIF output file")
     parser.add_argument("--incremental_results", default="false", type=str,
                         help="Compare to previous intelligent scan project - only report new/changed components")
     parser.add_argument("--upgrade_indirect", default="false", type=str,
                         help="Attempt upgrade for vulnerable indirect dependencies by upgrading direct parents")
-    parser.add_argument("--detect_opts", type=str, default="false", help="Passthrough options to Detect")
+    parser.add_argument("--detect_opts", type=str, help="Passthrough options to Detect")
 
     globals.args = parser.parse_args()
 
@@ -117,6 +116,7 @@ if __name__ == "__main__":
                     "--detect.blackduck.scan.mode=" + globals.args.mode,
                     # "--detect.detector.buildless=true",
                     "--detect.output.path=" + globals.args.output,
+                    # "--detect.bdio.file.name=scanout.bdio",
                     "--detect.cleanup=false"])
 
     if globals.args.project is not None:
@@ -127,11 +127,18 @@ if __name__ == "__main__":
         runargs.append("--detect.project.version.name=" + globals.args.version)
         print(f'- BD project version name {globals.args.version}')
 
-    if globals.args.detect_opts is not None and globals.args.detect_opts != '':
+    if globals.args.detect_opts is not None:
         print(f"- Add options to Detect scan {globals.args.detect_opts}")
         runargs.append(globals.args.detect_opts)
+
+    if globals.args.sarif is not None:
+        print(f"- Output GH SARIF to {globals.args.sarif}")
 
     print('-------------------------------------------------------------------------')
     print(f"INFO: Running Black Duck detect with the following options: {runargs}")
 
     scan.main_process(globals.args.output, runargs)
+
+
+if __name__ == "__main__":
+    main()

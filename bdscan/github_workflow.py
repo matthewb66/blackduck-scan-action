@@ -1,7 +1,7 @@
 import random
 import re
 import sys
-import globals
+from bdscan import globals
 
 from github import Github
 from BlackDuckUtils import MavenUtils
