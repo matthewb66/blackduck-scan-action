@@ -153,13 +153,22 @@ version {item['versionName']} because it was not seen in baseline")
             'directparents': [],
         }
         globals.printdebug(f"DEBUG: Looking for {http_name}")
-        ans = nx.ancestors(bdio_graph, http_name)
-        ans_list = list(ans)
-        globals.printdebug(f"DEBUG:   Ancestors are: {ans_list}")
+        ancs = nx.ancestors(bdio_graph, http_name)
+        ancs_list = list(ancs)
+        new_ancslist = []
+        # Deal with special case for aggregate project file hierarchy
+        i = 0
+        for a in ancs_list:
+            if not a.endswith(f'/{pm}'):
+                new_ancslist.append(a)
+            i += 1
+        ancs_list = new_ancslist[:]
+
+        globals.printdebug(f"DEBUG:   Ancestors are: {ancs_list}")
         # pred = nx.DiGraph.predecessors(globals.bdio_graph, http_name)
         # pred_list = list(pred)
-        globals.printdebug(f"DEBUG:   Predecessors are: {ans_list}")
-        if len(ans_list) != 1:
+        globals.printdebug(f"DEBUG:   Predecessors are: {ancs_list}")
+        if len(ancs_list) != 1:
             # Transitive Dependency
             if upgrade_indirect:
                 # If this is a transitive dependency, what are the flows?
@@ -197,9 +206,8 @@ version {item['versionName']} because it was not seen in baseline")
     # Check for duplicate direct and indirect deps
     for dir in direct_deps_to_upgrade.keys():
         item = direct_deps_to_upgrade[dir]
-        if dir == item:
-            direct_list.append(dir)
-        elif item not in direct_deps_to_upgrade.keys() and dir not in direct_list:
-            direct_list.append(dir)
+        if dir not in direct_list:
+            if dir == item or item not in direct_deps_to_upgrade.keys():
+                direct_list.append(dir)
 
     return dep_dict, direct_list, pm

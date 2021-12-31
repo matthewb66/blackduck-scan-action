@@ -43,11 +43,11 @@ version '{project_baseline_version}' - will not present incremental results")
             globals.printdebug(f"DEBUG: Baseline component cache=" + json.dumps(globals.baseline_comp_cache, indent=4))
             globals.printdebug(f"DEBUG: Generated baseline component cache")
 
-    bdio_graph, bdio_projects = bdio.get_bdio_dependency_graph(globals.args.output)
-
-    if len(bdio_projects) == 0:
-        print("ERROR: Unable to find base project in BDIO file")
-        sys.exit(1)
+    # bdio_graph, bdio_projects = bdio.get_bdio_dependency_graph(globals.args.output)
+    #
+    # if len(bdio_projects) == 0:
+    #     print("ERROR: Unable to find base project in BDIO file")
+    #     sys.exit(1)
 
     rapid_scan_data, dep_dict, direct_deps_to_upgrade, pm = bu.process_scan(
         globals.args.output, globals.bd, globals.baseline_comp_cache,
@@ -410,7 +410,7 @@ def main_process(output, runargs):
                                                                             globals.args.trustcert)
 
         # Work out possible upgrades
-        print('Validating upgrades ...')
+        print('Indentifying upgrades ...')
         upgrade_dict = {}
         for dep in direct_deps_to_upgrade:
             upgrade_dict[dep] = bu.find_upgrade_versions(dep, version_dict[dep], origin_dict, guidance_dict[dep],
@@ -424,7 +424,7 @@ def main_process(output, runargs):
     # Process data
     create_scan_outputs(rapid_scan_data, good_upgrades, dep_dict, direct_deps_to_upgrade)
 
-    if globals.args.sarif != '':
+    if globals.args.sarif is not None:
         print(f'Writing sarif output file {globals.args.sarif} ...')
         write_sarif(globals.args.sarif)
 
