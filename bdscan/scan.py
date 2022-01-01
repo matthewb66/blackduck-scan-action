@@ -8,7 +8,7 @@ from blackduck import Client
 
 from BlackDuckUtils import BlackDuckOutput as bo
 from BlackDuckUtils import Utils as bu
-from BlackDuckUtils import bdio as bdio
+# from BlackDuckUtils import bdio as bdio
 from BlackDuckUtils import asyncdata as asyncdata
 
 from bdscan import globals
@@ -223,11 +223,16 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
                     f"The direct dependency {comp_name}/{comp_version} has {dir_vuln_count} vulnerabilities (max " \
                     f"score {dir_max_sev}) and {children_num_vulns} vulnerabilities in child dependencies (max score " \
                     f"{children_max_sev})."
+            ctext = f"The direct dependency {comp_name}/{comp_version} has {dir_vuln_count} vulnerabilities (max " \
+                    f"score {dir_max_sev}) and {children_num_vulns} vulnerabilities in child dependencies (max score " \
+                    f"{children_max_sev})."
             ltext = stext + f"\n\nVulnerabilities for {comp_name}/{comp_version}:\n\n" + \
                 '\n'.join(md_comp_vulns_table) + '\n'
         elif dir_vuln_count > 0 and children_num_vulns == 0:
             stext = f"## {comp_name}/{comp_version}" \
                     f"The direct dependency {comp_name}/{comp_version} has {dir_vuln_count} vulnerabilities (max " \
+                    f"score {dir_max_sev})."
+            ctext = f"The direct dependency {comp_name}/{comp_version} has {dir_vuln_count} vulnerabilities (max " \
                     f"score {dir_max_sev})."
             ltext = stext + f"\n\nVulnerabilities for {comp_name}/{comp_version}:\n\n" + \
                 '\n'.join(md_comp_vulns_table) + '\n'
@@ -235,10 +240,13 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
             stext = f"## {comp_name}/{comp_version}" \
                     f"The direct dependency {comp_name}/{comp_version} has {children_num_vulns} vulnerabilities in " \
                     f"child dependencies (max score {children_max_sev})."
+            ctext = f"The direct dependency {comp_name}/{comp_version} has {children_num_vulns} vulnerabilities in " \
+                    f"child dependencies (max score {children_max_sev})."
             ltext = stext + f"\n\nVulnerabilities for {comp_name}/{comp_version}:\n\n" + \
                 '\n'.join(md_comp_vulns_table) + '\n'
         else:
             stext = ''
+            ctext = ''
             ltext = ''
 
         fix_pr_node = dict()
@@ -294,10 +302,10 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
         tool_rule = {
             'id': comp_name,
             'shortDescription': {
-                'text': stext,
+                'text': ctext,
             },
             'fullDescription': {
-                'text': ltext,
+                'text': ctext,
             },
             'help': {
                 'text': '',
@@ -410,11 +418,12 @@ def main_process(output, runargs):
                                                                             globals.args.trustcert)
 
         # Work out possible upgrades
-        print('Indentifying upgrades ...')
+        print('Identifying upgrades ...')
         upgrade_dict = {}
         for dep in direct_deps_to_upgrade:
-            upgrade_dict[dep] = bu.find_upgrade_versions(dep, version_dict[dep], origin_dict, guidance_dict[dep],
-                                                         globals.args.upgrade_major)
+            if dep in version_dict.keys() and dep in guidance_dict.keys():
+                upgrade_dict[dep] = bu.find_upgrade_versions(dep, version_dict[dep], origin_dict, guidance_dict[dep],
+                                                             globals.args.upgrade_major)
 
         # Test upgrades using Detect Rapid scans
         good_upgrades = test_upgrades(upgrade_dict, direct_deps_to_upgrade, pm)
@@ -437,14 +446,14 @@ def main_process(output, runargs):
     # Optionally generate Fix PR
     if globals.args.fix_pr and len(globals.fix_pr_data.values()) > 0:
         print('Creating fix pull request ...')
-        github_workflow.github_fix_pr()
-        github_workflow.github_set_commit_status(len(globals.comment_on_pr_comments) > 0)
+        if github_workflow.github_fix_pr():
+            github_workflow.github_set_commit_status(len(globals.comment_on_pr_comments) > 0)
 
     # Optionally comment on the pull request this is for
     if globals.args.comment_on_pr and len(globals.comment_on_pr_comments) > 0:
         print('Creating comment on existing pull request ...')
-        github_workflow.github_pr_comment()
-        github_workflow.github_set_commit_status(len(globals.comment_on_pr_comments) > 0)
+        if github_workflow.github_pr_comment():
+            github_workflow.github_set_commit_status(len(globals.comment_on_pr_comments) > 0)
 
     print('Done')
     sys.exit(0)

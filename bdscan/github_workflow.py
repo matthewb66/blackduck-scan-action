@@ -23,6 +23,9 @@ def github_create_pull_request_comment(g, pr, comments_markdown):
 
 
 def github_commit_file_and_create_fixpr(g, fix_pr_node):
+    if len(globals.files_to_patch) == 0:
+        print('WARNING: Unable to apply fix patch - cannot determine containing package file')
+        return False
     globals.printdebug(f"DEBUG: Look up GitHub repo '{globals.github_repo}'")
     repo = g.get_repo(globals.github_repo)
     globals.printdebug(repo)
@@ -50,7 +53,7 @@ def github_commit_file_and_create_fixpr(g, fix_pr_node):
                 file_contents = fp.read()
         except Exception as exc:
             print(f"ERROR: Unable to open package file '{globals.files_to_patch[file_to_patch]}' - {str(exc)}")
-            sys.exit(1)
+            return False
 
         globals.printdebug(f"DEBUG: Update file '{file_to_patch}' with commit message '{commit_message}'")
         file = repo.update_file(file_to_patch, commit_message, file_contents, file.sha, branch=new_branch_name)
@@ -66,6 +69,7 @@ Pull request submitted by Synopsys Black Duck to upgrade {fix_pr_node['component
     pr = repo.create_pull(title=f"Black Duck: Upgrade {fix_pr_node['componentName']} to version "
                                 f"{fix_pr_node['versionTo']} fix known security vulerabilities",
                           body=pr_body, head=new_branch_name, base="master")
+    return True
 
 
 def github_get_pull_requests(g):
@@ -90,7 +94,7 @@ def github_fix_pr():
             globals.github_api_url is None):
         print("ERROR: Cannot find GITHUB_TOKEN, GITHUB_REPOSITORY, GITHUB_REF and/or GITHUB_API_URL in the "
               "environment - are you running from a GitHub action?")
-        sys.exit(1)
+        return False
 
     globals.printdebug(f"DEBUG: Connect to GitHub at {globals.github_api_url}")
     g = Github(globals.github_token, base_url=globals.github_api_url)
@@ -100,6 +104,7 @@ def github_fix_pr():
     pulls = github_get_pull_requests(g)
 
     globals.printdebug(f"fix_pr_data={globals.fix_pr_data}")
+    ret = True
     for fix_pr_node in globals.fix_pr_data.values():
         globals.printdebug(f"DEBUG: Fix '{fix_pr_node['componentName']}' version '{fix_pr_node['versionFrom']}' in "
                            f"file '{fix_pr_node['filename']}' using ns '{fix_pr_node['ns']}' to version "
@@ -117,25 +122,27 @@ def github_fix_pr():
                                                                      fix_pr_node['componentName'],
                                                                      fix_pr_node['versionFrom'],
                                                                      fix_pr_node['versionTo'])
-            globals.printdebug(f"DEBUG: Files to patch are: {globals.files_to_patch}")
-
-            github_commit_file_and_create_fixpr(g, fix_pr_node)
         elif fix_pr_node['ns'] == "maven":
             globals.files_to_patch = MavenUtils.upgrade_maven_dependency(fix_pr_node['filename'],
                                                                          fix_pr_node['componentName'],
                                                                          fix_pr_node['versionFrom'],
                                                                          fix_pr_node['versionTo'])
-            globals.printdebug(f"DEBUG: Files to patch are: {globals.files_to_patch}")
-            github_commit_file_and_create_fixpr(g, fix_pr_node)
         elif fix_pr_node['ns'] == "nuget":
             globals.files_to_patch = NugetUtils.upgrade_nuget_dependency(fix_pr_node['filename'],
                                                                          fix_pr_node['componentName'],
                                                                          fix_pr_node['versionFrom'],
                                                                          fix_pr_node['versionTo'])
-            globals.printdebug(f"DEBUG: Files to patch are: {globals.files_to_patch}")
-            github_commit_file_and_create_fixpr(g, fix_pr_node)
         else:
             print(f"INFO: Generating a Fix PR for packages of type '{fix_pr_node['ns']}' is not supported yet")
+            return False
+
+        if len(globals.files_to_patch) == 0:
+            print('WARNING: Unable to apply fix patch - cannot determine containing package file')
+            return False
+
+        if not github_commit_file_and_create_fixpr(g, fix_pr_node):
+            ret = False
+    return ret
 
 
 def github_pr_comment():
@@ -143,7 +150,7 @@ def github_pr_comment():
             globals.github_api_url is None or globals.github_sha is None):
         print("ERROR: Cannot find GITHUB_TOKEN, GITHUB_REPOSITORY, GITHUB_REF, GTIHUB_SHA and/or GITHUB_API_URL in the "
               "environment - are you running from a GitHub action?")
-        sys.exit(1)
+        return False
 
     globals.printdebug(f"DEBUG: Connect to GitHub at {globals.github_api_url}")
     g = Github(globals.github_token, base_url=globals.github_api_url)
@@ -168,7 +175,7 @@ def github_pr_comment():
 
     if pull_number_for_sha is None:
         print(f"ERROR: Unable to find pull request #{pull_number_for_sha}")
-        sys.exit(1)
+        return False
 
     pr = repo.get_pull(pull_number_for_sha)
 
@@ -191,20 +198,19 @@ def github_pr_comment():
     #     comments_markdown.append(comment)
     comments_markdown = "# Synopsys Black Duck XXXX" + "\n".join(globals.comment_on_pr_comments)
 
+    if len(comments_markdown) > 65535:
+        comments_markdown = comments_markdown[:65535]
+
     if existing_comment is not None:
         globals.printdebug(f"DEBUG: Update/edit existing comment for PR #{pull_number_for_sha}\n{comments_markdown}")
         # existing_comment.edit("\n".join(comments_markdown))
-        csize = len(existing_comment.body) + len(comments_markdown)
-        if csize > 65535:
-            comments_markdown = comments_markdown[:(65535 - len(existing_comment.body))]
         existing_comment.edit(comments_markdown)
     else:
-        if len(comments_markdown) > 65535:
-            comments_markdown = comments_markdown[:65535]
         globals.printdebug(f"DEBUG: Create new comment for PR #{pull_number_for_sha}")
         github_create_pull_request_comment(g, pr, comments_markdown)
         issue = repo.get_issue(number=pr.number)
         issue.create_comment(comments_markdown)
+    return True
 
 
 def github_set_commit_status(is_failure):

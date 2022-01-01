@@ -167,7 +167,7 @@ version {item['versionName']} because it was not seen in baseline")
         globals.printdebug(f"DEBUG:   Ancestors are: {ancs_list}")
         # pred = nx.DiGraph.predecessors(globals.bdio_graph, http_name)
         # pred_list = list(pred)
-        globals.printdebug(f"DEBUG:   Predecessors are: {ancs_list}")
+        # globals.printdebug(f"DEBUG:   Predecessors are: {ancs_list}")
         if len(ancs_list) != 1:
             # Transitive Dependency
             if upgrade_indirect:
@@ -178,13 +178,16 @@ version {item['versionName']} because it was not seen in baseline")
                     globals.printdebug(f"DEBUG: Paths to '{http_name}'")
                     for path in dep_paths:
                         # First generate a string for easy output and reading
-                        path_modified = path
+                        path_modified = path[:]
                         path_modified.pop(0)
                         pathstr = " -> ".join(path_modified)
-                        globals.printdebug(f"DEBUG:   path={pathstr}")
                         dependency_paths.append(pathstr)
                         direct_dep = bu.normalise_dep(pm, path_modified[0])
-                        dep_dict[item['componentIdentifier']]['directparents'].append(direct_dep)
+                        if len(path_modified) == 1 and path_modified[0] == http_name:
+                            # This is actually a direct dependency
+                            dep_dict[item['componentIdentifier']]['deptype'] = 'Direct'
+                        else:
+                            dep_dict[item['componentIdentifier']]['directparents'].append(direct_dep)
 
                         # Then log the direct dependencies directly
                         if direct_dep != '' and dep_vulnerable and direct_dep not in direct_deps_to_upgrade.keys():

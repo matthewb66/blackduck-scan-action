@@ -116,7 +116,7 @@ def main():
                     "--detect.blackduck.scan.mode=" + globals.args.mode,
                     # "--detect.detector.buildless=true",
                     "--detect.output.path=" + globals.args.output,
-                    # "--detect.bdio.file.name=scanout.bdio",
+                    "--detect.bdio.file.name=scanout.bdio",
                     "--detect.cleanup=false"])
 
     if globals.args.project is not None:
