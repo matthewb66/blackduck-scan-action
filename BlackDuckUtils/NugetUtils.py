@@ -197,8 +197,6 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
 
         test_dirdeps = last_vulnerable_dirdeps
 
-    print('GOOD UPGRADES:')
-    print(json.dumps(good_upgrades, indent=4))
     return good_upgrades
 
 

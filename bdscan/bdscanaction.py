@@ -19,7 +19,7 @@ def main():
     parser.add_argument("--mode", default="rapid", type=str,
                         help="Black Duck scanning mode, either intelligent or rapid")
     parser.add_argument("--output", default="blackduck-output", type=str, help="Output directory")
-    parser.add_argument("--fix_pr", type=str, default="false", help="Create a Fix PR, true or false")
+    parser.add_argument("--fix_pr", type=str, default="false", help="Create Fix PRs for upgrades, true or false")
     parser.add_argument("--upgrade_major", type=str, default="false",
                         help="Offer upgrades to major versions, true or false")
     parser.add_argument("--comment_on_pr", type=str, default="false",
@@ -88,12 +88,8 @@ def main():
         globals.args.comment_on_pr = False
 
     if globals.args.upgrade_major.lower() == 'true':
-        if not globals.args.comment_on_pr and not globals.args.fix_pr:
-            print('WARNING: Upgrade major option specified but fix or comment on PR not configured - Ignoring')
-            globals.args.upgrade_major = False
-        else:
-            globals.args.upgrade_major = True
-            print('- Allow major version upgrades')
+        globals.args.upgrade_major = True
+        print('- Allow major version upgrades')
     else:
         globals.args.upgrade_major = False
 
@@ -127,7 +123,7 @@ def main():
         runargs.append("--detect.project.version.name=" + globals.args.version)
         print(f'- BD project version name {globals.args.version}')
 
-    if globals.args.detect_opts is not None:
+    if globals.args.detect_opts is not None and globals.args.detect_opts != '':
         for opt in globals.args.detect_opts.split(','):
             newopt = f"--{opt}"
             print(f"- Add option to Detect scan {newopt}")

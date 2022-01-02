@@ -266,6 +266,10 @@ def attempt_indirect_upgrade(pm, deps_list, upgrade_dict, detect_jar, connectopt
         dirname.cleanup()
         return 0, None
 
+    print('RECOMMENDED UPGRADES FOR DIRECT DEPENDENCIES:')
+    for upgrade in good_upgrades_dict.keys():
+        print(f"- {upgrade}: Upgrade version = {good_upgrades_dict[upgrade]}")
+
     os.chdir(origdir)
     dirname.cleanup()
     return good_upgrades_dict

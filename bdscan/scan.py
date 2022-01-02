@@ -225,7 +225,7 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
                     f"{children_max_sev})."
             ctext = f"The direct dependency {comp_name}/{comp_version} has {dir_vuln_count} vulnerabilities (max " \
                     f"score {dir_max_sev}) and {children_num_vulns} vulnerabilities in child dependencies (max score " \
-                    f"{children_max_sev})."
+                    f"{children_max_sev}).\n\nList of direct and indirect vulnerabilities:\n{','.join(dir_vulns)}"
             ltext = stext + f"\n\nVulnerabilities for {comp_name}/{comp_version}:\n\n" + \
                 '\n'.join(md_comp_vulns_table) + '\n'
         elif dir_vuln_count > 0 and children_num_vulns == 0:
@@ -233,7 +233,7 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
                     f"The direct dependency {comp_name}/{comp_version} has {dir_vuln_count} vulnerabilities (max " \
                     f"score {dir_max_sev})."
             ctext = f"The direct dependency {comp_name}/{comp_version} has {dir_vuln_count} vulnerabilities (max " \
-                    f"score {dir_max_sev})."
+                    f"score {dir_max_sev}).\n\nList of direct vulnerabilities:\n{','.join(dir_vulns)}"
             ltext = stext + f"\n\nVulnerabilities for {comp_name}/{comp_version}:\n\n" + \
                 '\n'.join(md_comp_vulns_table) + '\n'
         elif children_num_vulns > 0:
@@ -241,7 +241,8 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
                     f"The direct dependency {comp_name}/{comp_version} has {children_num_vulns} vulnerabilities in " \
                     f"child dependencies (max score {children_max_sev})."
             ctext = f"The direct dependency {comp_name}/{comp_version} has {children_num_vulns} vulnerabilities in " \
-                    f"child dependencies (max score {children_max_sev})."
+                    f"child dependencies (max score {children_max_sev})\n\n" \
+                    f"List of indirect vulnerabilities:\n{','.join(dir_vulns)}."
             ltext = stext + f"\n\nVulnerabilities for {comp_name}/{comp_version}:\n\n" + \
                 '\n'.join(md_comp_vulns_table) + '\n'
         else:
