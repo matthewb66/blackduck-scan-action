@@ -20,7 +20,7 @@ def parse_component_id(component_id):
     return comp_ns, comp_name, comp_version
 
 
-def convert_to_bdio(component_id):
+def convert_dep_to_bdio(component_id):
     bdio_name = "http:" + re.sub(":", "/", component_id, 1)
     return bdio_name
 
@@ -75,11 +75,12 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
         installed_packages = []
         orig_deps_processed = []
         for dep in test_dirdeps:
-            arr = dep.split(':')
-            forge = arr[0]
-            arr2 = arr[1].split('/')
-            comp = arr2[0]
-            ver = arr2[1]
+            forge, comp, ver = parse_component_id(dep)
+            # arr = dep.split('/')
+            # forge = arr[0]
+            # # arr2 = arr[1].split(':')
+            # comp = arr[1]
+            # ver = arr[2]
             dstring = f'{forge}:{comp}/{ver}'
             if dstring not in upgrade_dict.keys() or len(upgrade_dict[dstring]) <= ind:
                 # print(f'No Upgrade {ind} available for {dstring}')
@@ -152,13 +153,9 @@ def normalise_dep(dep):
     #
     # Replace / with :
     # return dep.replace('/', ':').replace('http:', '')
-    dep = dep.replace('http:', '').replace('npmjs/', 'npmjs:')
+    dep = dep.replace('http:', '').replace(':', '|').replace('/', '|')
     # Check format matches 'npmjs:component/version'
-    colon = dep.split(':')
-    if len(colon) == 2:
-        slash = colon[1].split('/')
-        if len(slash) == 2:
-            newver = bu.normalise_version(slash[1])
-            if slash[1] == newver:
-                return dep
+    slash = dep.split('|')
+    if len(slash) == 3:
+        return f"{slash[0]}:{slash[1]}/{slash[2]}"
     return ''

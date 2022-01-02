@@ -273,14 +273,14 @@ def attempt_indirect_upgrade(pm, deps_list, upgrade_dict, detect_jar, connectopt
 
 def normalise_dep(pm, compid):
     # print('utils_upgrade_indirect()')
-    if pm == 'npm':
+    if pm == 'npmjs' or pm == 'npm':
         return NpmUtils.normalise_dep(compid)
     elif pm == 'maven':
         return MavenUtils.normalise_dep(compid)
     elif pm == 'nuget':
         return NugetUtils.normalise_dep(compid)
     else:
-        return
+        return ''
 
 
 def normalise_version(ver):

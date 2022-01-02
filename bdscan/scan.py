@@ -365,6 +365,7 @@ def write_sarif(sarif_file):
                     'driver': {
                         'name': 'Synopsys Black Duck',
                         'organization': 'Synopsys',
+                        'version': globals.scan_utility_version,
                         'rules': globals.tool_rules,
                     }
                 },
@@ -445,15 +446,19 @@ def main_process(output, runargs):
 
     # Optionally generate Fix PR
     if globals.args.fix_pr and len(globals.fix_pr_data.values()) > 0:
-        print('Creating fix pull request ...')
         if github_workflow.github_fix_pr():
-            github_workflow.github_set_commit_status(len(globals.comment_on_pr_comments) > 0)
+            github_workflow.github_set_commit_status(True)
+            print('Created fix pull request')
+        else:
+            print('Unable to create fix pull request')
 
     # Optionally comment on the pull request this is for
     if globals.args.comment_on_pr and len(globals.comment_on_pr_comments) > 0:
-        print('Creating comment on existing pull request ...')
         if github_workflow.github_pr_comment():
-            github_workflow.github_set_commit_status(len(globals.comment_on_pr_comments) > 0)
+            github_workflow.github_set_commit_status(True)
+            print('Created comment on existing pull request')
+        else:
+            print('Unable to create comment on existing pull request')
 
     print('Done')
     sys.exit(0)

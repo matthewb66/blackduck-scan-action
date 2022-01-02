@@ -122,7 +122,7 @@ version {item['versionName']} because it was not seen in baseline")
 
         # Matching in the BDIO requires an http: prefix
         if comp_ns == "npmjs":
-            http_name = NpmUtils.convert_to_bdio(item['componentIdentifier'])
+            http_name = NpmUtils.convert_dep_to_bdio(item['componentIdentifier'])
             if pm != '' and pm != 'npm':
                 print(f"ERROR: Mixed package managers not supported")
                 sys.exit(1)
@@ -180,6 +180,14 @@ version {item['versionName']} because it was not seen in baseline")
                         # First generate a string for easy output and reading
                         path_modified = path[:]
                         path_modified.pop(0)
+                        new_path = []
+                        i = 0
+                        for p in path_modified:
+                            if not p.endswith(f'/{pm}'):
+                                new_path.append(p)
+                            i += 1
+                        path_modified = new_path[:]
+
                         pathstr = " -> ".join(path_modified)
                         dependency_paths.append(pathstr)
                         direct_dep = bu.normalise_dep(pm, path_modified[0])
@@ -191,7 +199,8 @@ version {item['versionName']} because it was not seen in baseline")
 
                         # Then log the direct dependencies directly
                         if direct_dep != '' and dep_vulnerable and direct_dep not in direct_deps_to_upgrade.keys():
-                            direct_deps_to_upgrade[direct_dep] = item['componentIdentifier']
+                            direct_deps_to_upgrade[item['componentIdentifier']] = \
+                                bu.normalise_dep(pm, item['componentIdentifier'])
                             # print(f'TRANSITIVE ANCESTOR VULNERABLE: {direct_dep} (child {http_name})')
 
                     dep_dict[item['componentIdentifier']]['paths'] = dependency_paths
@@ -199,11 +208,9 @@ version {item['versionName']} because it was not seen in baseline")
             # Direct dependency
             direct_dep = bu.normalise_dep(pm, item['componentIdentifier'])
             if direct_dep not in direct_deps_to_upgrade.keys() and dep_vulnerable:
-                direct_deps_to_upgrade[direct_dep] = item['componentIdentifier']
+                direct_deps_to_upgrade[direct_dep] = direct_dep
                 # print('DIRECT DEP VULNERABLE: ' + direct_dep)
-            #
-            # Need to use upgrade guidance to test for upgrade
-            dep_dict[item['componentIdentifier']]['deptype'] = 'Direct'
+            dep_dict[direct_dep]['deptype'] = 'Direct'
 
     direct_list = []
     # Check for duplicate direct and indirect deps
