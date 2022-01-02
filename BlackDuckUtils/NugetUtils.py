@@ -32,30 +32,45 @@ def parse_component_id(component_id):
 
 def convert_to_bdio(component_id):
     bdio_name = "http:" + re.sub(":", "/", component_id)
+    # bdio_name = "http:" + component_id
     return bdio_name
 
 
-def upgrade_nuget_dependency(package_file, component_name, current_version, component_version):
+def upgrade_nuget_dependency(package_file, component_name, current_version, upgrade_version):
     # Key will be actual name, value will be local filename
     files_to_patch = dict()
+    if package_file == 'Unknown':
+        return files_to_patch
 
     #dirname = tempfile.TemporaryDirectory()
-    dirname = tempfile.mkdtemp(prefix="snps-patch-" + component_name + "-" + component_version)
+    dirname = tempfile.mkdtemp(prefix="snps-patch-" + component_name + "-" + upgrade_version)
 
-    parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
+    from lxml import etree
 
-    ET.register_namespace('', "http://maven.apache.org/POM/4.0.0")
-    ET.register_namespace('xsi', "http://www.w3.org/2001/XMLSchema-instance")
-
-    tree = ET.parse(package_file, parser=ET.XMLParser(target=MyTreeBuilder()))
+    tree = etree.parse(package_file)
     root = tree.getroot()
 
-    nsmap = {'m': 'http://maven.apache.org/POM/4.0.0'}
-
-    globals.printdebug(f"DEBUG: Search for maven dependency {component_name}@{component_version}")
-
-    for dep in root.findall('.//m:ItemGroup', nsmap):
-        packageref = dep.find('m:PackageReference', nsmap).text
+    namespaces = {'ns': 'http://schemas.microsoft.com/developer/msbuild/2003'}
+    myval = tree.xpath(f'.//PackageReference[@Include="{component_name}"][@Version="{current_version}"]',
+                           namespaces=namespaces)
+    if myval is not None:
+        myval[0].attrib['Version'] = upgrade_version
+    # tree = ET.parse(package_file)
+    # root = tree.getroot()
+    # elem = tree.findall(".//{http://schemas.microsoft.com/developer/msbuild/2003}ItemGroup")    # parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
+    #
+    # ET.register_namespace('', "http://schemas.microsoft.com/developer/msbuild/2003")
+    # ET.register_namespace('xsi', "http://www.w3.org/2001/XMLSchema-instance")
+    #
+    # tree = ET.parse(package_file, parser=ET.XMLParser(target=MyTreeBuilder()))
+    # root = tree.getroot()
+    #
+    # nsmap = {'m': 'http://schemas.microsoft.com/developer/msbuild/2003'}
+    #
+    # globals.printdebug(f"DEBUG: Search for nuget dependency {component_name}@{component_version}")
+    #
+    # for dep in root.findall('.//ItemGroup', nsmap):
+    #     packageref = dep.find('PackageReference', nsmap)
 
         # # TODO Also include organization name?
         # if artifactId == component_name:
@@ -66,7 +81,7 @@ def upgrade_nuget_dependency(package_file, component_name, current_version, comp
     with open(dirname + "/" + package_file, "wb") as fp:
         fp.write(xmlstr)
 
-    print(f"INFO: Updated Maven component in: {package_file}")
+    print(f"INFO: Updated Nuget component in: {package_file}")
 
     files_to_patch[package_file] = dirname + "/" + package_file
 
@@ -182,8 +197,6 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
 
         test_dirdeps = last_vulnerable_dirdeps
 
-    print('GOOD UPGRADES:')
-    print(json.dumps(good_upgrades, indent=4))
     return good_upgrades
 
 
@@ -191,5 +204,5 @@ def normalise_dep(dep):
     #
     # Replace / with :
     if dep.find('http:') == 0:
-        dep = dep.replace('http:', '')
+        dep = dep.replace('http:', '').replace('nuget/', 'nuget:')
     return dep

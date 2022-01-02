@@ -266,6 +266,10 @@ def attempt_indirect_upgrade(pm, deps_list, upgrade_dict, detect_jar, connectopt
         dirname.cleanup()
         return 0, None
 
+    print('RECOMMENDED UPGRADES FOR DIRECT DEPENDENCIES:')
+    for upgrade in good_upgrades_dict.keys():
+        print(f"- {upgrade}: Upgrade version = {good_upgrades_dict[upgrade]}")
+
     os.chdir(origdir)
     dirname.cleanup()
     return good_upgrades_dict
@@ -273,14 +277,14 @@ def attempt_indirect_upgrade(pm, deps_list, upgrade_dict, detect_jar, connectopt
 
 def normalise_dep(pm, compid):
     # print('utils_upgrade_indirect()')
-    if pm == 'npm':
+    if pm == 'npmjs' or pm == 'npm':
         return NpmUtils.normalise_dep(compid)
     elif pm == 'maven':
         return MavenUtils.normalise_dep(compid)
     elif pm == 'nuget':
         return NugetUtils.normalise_dep(compid)
     else:
-        return
+        return ''
 
 
 def normalise_version(ver):

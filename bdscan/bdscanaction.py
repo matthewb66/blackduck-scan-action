@@ -19,7 +19,7 @@ def main():
     parser.add_argument("--mode", default="rapid", type=str,
                         help="Black Duck scanning mode, either intelligent or rapid")
     parser.add_argument("--output", default="blackduck-output", type=str, help="Output directory")
-    parser.add_argument("--fix_pr", type=str, default="false", help="Create a Fix PR, true or false")
+    parser.add_argument("--fix_pr", type=str, default="false", help="Create Fix PRs for upgrades, true or false")
     parser.add_argument("--upgrade_major", type=str, default="false",
                         help="Offer upgrades to major versions, true or false")
     parser.add_argument("--comment_on_pr", type=str, default="false",
@@ -29,7 +29,8 @@ def main():
                         help="Compare to previous intelligent scan project - only report new/changed components")
     parser.add_argument("--upgrade_indirect", default="false", type=str,
                         help="Attempt upgrade for vulnerable indirect dependencies by upgrading direct parents")
-    parser.add_argument("--detect_opts", type=str, help="Passthrough options to Detect")
+    parser.add_argument("--detect_opts", type=str,
+                        help="Passthrough options to Detect, comma delimited, exclude leading hyphens")
 
     globals.args = parser.parse_args()
 
@@ -76,23 +77,19 @@ def main():
 
     if globals.args.fix_pr.lower() == 'true':
         globals.args.fix_pr = True
-        print('- Create Fix PR')
+        print('- CREATE FIX PR')
     else:
         globals.args.fix_pr = False
 
     if globals.args.comment_on_pr.lower() == 'true':
         globals.args.comment_on_pr = True
-        print('- Add comment to existing PR')
+        print('- ADD COMMENT TO EXISTING PR')
     else:
         globals.args.comment_on_pr = False
 
     if globals.args.upgrade_major.lower() == 'true':
-        if not globals.args.comment_on_pr and not globals.args.fix_pr:
-            print('WARNING: Upgrade major option specified but fix or comment on PR not configured - Ignoring')
-            globals.args.upgrade_major = False
-        else:
-            globals.args.upgrade_major = True
-            print('- Allow major version upgrades')
+        globals.args.upgrade_major = True
+        print('- Allow major version upgrades')
     else:
         globals.args.upgrade_major = False
 
@@ -108,7 +105,6 @@ def main():
     else:
         globals.args.upgrade_indirect = False
 
-    debug = int(globals.args.debug)
     globals.debug = int(globals.args.debug)
 
     runargs.extend(["--blackduck.url=" + globals.args.url,
@@ -116,7 +112,7 @@ def main():
                     "--detect.blackduck.scan.mode=" + globals.args.mode,
                     # "--detect.detector.buildless=true",
                     "--detect.output.path=" + globals.args.output,
-                    # "--detect.bdio.file.name=scanout.bdio",
+                    "--detect.bdio.file.name=scanout.bdio",
                     "--detect.cleanup=false"])
 
     if globals.args.project is not None:
@@ -127,14 +123,21 @@ def main():
         runargs.append("--detect.project.version.name=" + globals.args.version)
         print(f'- BD project version name {globals.args.version}')
 
-    if globals.args.detect_opts is not None:
-        print(f"- Add options to Detect scan {globals.args.detect_opts}")
-        runargs.append(globals.args.detect_opts)
+    if globals.args.detect_opts is not None and globals.args.detect_opts != '':
+        for opt in globals.args.detect_opts.split(','):
+            newopt = f"--{opt}"
+            print(f"- Add option to Detect scan {newopt}")
+            runargs.append(newopt)
 
     if globals.args.sarif is not None:
-        print(f"- Output GH SARIF to {globals.args.sarif}")
+        print(f"- OUTPUT GH SARIF TO {globals.args.sarif}")
 
     print('-------------------------------------------------------------------------')
+    if globals.args.sarif is None and not globals.args.comment_on_pr and not globals.args.fix_pr and \
+            globals.args.mode == 'rapid':
+        print("Nothing to do - specify at least 1 option from 'sarif, comment_on_pr, fix_pr'")
+        sys.exit(1)
+
     print(f"INFO: Running Black Duck detect with the following options: {runargs}")
 
     scan.main_process(globals.args.output, runargs)

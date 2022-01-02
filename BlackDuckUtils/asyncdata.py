@@ -45,8 +45,8 @@ async def async_main(compidlist, bd, trustcert):
 
         reduced_version_list = {}
         for compid in compidlist:
-            tempcompid = compid.replace(':', '@').replace('/', '@')
-            arr = tempcompid.split('@')
+            tempcompid = compid.replace(':', '|').replace('/', '|')
+            arr = tempcompid.split('|')
             if compid not in all_versions.keys():
                 continue
             curr_ver = bu.normalise_version(arr[-1])

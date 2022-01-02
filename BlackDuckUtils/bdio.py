@@ -103,7 +103,7 @@ def get_dependency_type(bdio_graph, bdio_projects, componentIdentifier):
     dependency_type = "Direct"
 
     if (comp_ns == "npmjs"):
-        comp_http_name = NpmUtils.convert_to_bdio(componentIdentifier)
+        comp_http_name = NpmUtils.convert_dep_to_bdio(componentIdentifier)
     elif (comp_ns == "maven"):
         comp_http_name = MavenUtils.convert_to_bdio(componentIdentifier)
     else:
