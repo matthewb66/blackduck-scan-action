@@ -435,8 +435,8 @@ def main_process(output, runargs):
     # Process data
     create_scan_outputs(rapid_scan_data, good_upgrades, dep_dict, direct_deps_to_upgrade)
 
-    if globals.args.sarif is not None:
-        print(f'Writing sarif output file {globals.args.sarif} ...')
+    if globals.args.sarif is not None and globals.args.sarif != '':
+        print(f"Writing sarif output file '{globals.args.sarif}' ...")
         write_sarif(globals.args.sarif)
 
     globals.github_token = os.getenv("GITHUB_TOKEN")
