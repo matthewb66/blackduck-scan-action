@@ -38,12 +38,8 @@ def main():
 
     if globals.args.url is None or globals.args.url == '':
         globals.args.url = os.getenv("BLACKDUCK_URL")
-    else:
-        globals.args.url = None
     if globals.args.token is None or globals.args.token == '':
         globals.args.token = os.getenv("BLACKDUCK_API_TOKEN")
-    else:
-        globals.args.token = None
 
     if globals.args.url is None or globals.args.token is None:
         print(f"ERROR: Must specify Black Duck Hub URL and API Token")
@@ -51,11 +47,14 @@ def main():
 
     print(f'- BD URL {globals.args.url}')
     print(f'- BD Token *************')
-    if globals.args.trustcert is None:
+    if globals.args.trustcert is None or globals.args.trustcert == '':
         globals.args.trustcert = False
     elif str(globals.args.trustcert).lower() == 'true':
         globals.args.trustcert = True
-    if globals.args.trustcert is None:
+    else:
+        globals.args.trustcert = False
+
+    if globals.args.trustcert is False:
         globals.args.trustcert = os.getenv("BLACKDUCK_TRUST_CERT")
         if globals.args.trustcert is None:
             globals.args.trustcert = False
@@ -67,24 +66,16 @@ def main():
         runargs.append("--blackduck.trust.cert=true")
         print('- Trust BD server certificate')
 
-    if globals.args.mode is None:
+    if globals.args.mode is None or globals.args.mode == '':
         globals.args.mode = 'rapid'
-    else:
-        globals.args.mode = str(globals.args.mode).lower()
-    if globals.args.mode == 'full':
+    elif str(globals.args.mode).lower() == 'full' or str(globals.args.mode).lower() == 'intelligent':
         globals.args.mode = 'intelligent'
-
-    if globals.args.mode != "intelligent" and globals.args.mode != "rapid":
-        print(f"ERROR: Scanning mode must be intelligent or rapid")
-        sys.exit(1)
-
-    if globals.args.mode == 'intelligent':
         print('- Run intelligent (full) scan')
-
-    if globals.args.mode == 'rapid':
+    else:
+        globals.args.mode = 'rapid'
         print('- Run Rapid scan')
 
-    if globals.args.fix_pr is None or globals.args.fix_pr == 'false':
+    if globals.args.fix_pr is None or str(globals.args.fix_pr).lower() == 'false' or globals.args.fix_pr == '':
         globals.args.fix_pr = False
     elif str(globals.args.fix_pr).lower() == 'true':
         globals.args.fix_pr = True
@@ -92,7 +83,8 @@ def main():
     else:
         globals.args.fix_pr = False
 
-    if globals.args.comment_on_pr is None or globals.args.comment_on_pr == 'false':
+    if globals.args.comment_on_pr is None or str(globals.args.comment_on_pr).lower() == 'false' or \
+            globals.args.comment_on_pr == '':
         globals.args.comment_on_pr = False
     elif str(globals.args.comment_on_pr).lower() == 'true':
         globals.args.comment_on_pr = True
@@ -100,7 +92,8 @@ def main():
     else:
         globals.args.comment_on_pr = False
 
-    if globals.args.upgrade_major is None or globals.args.upgrade_major == 'false':
+    if globals.args.upgrade_major is None or globals.args.upgrade_major == 'false' or \
+            globals.args.upgrade_major == '':
         globals.args.upgrade_major = False
     elif str(globals.args.upgrade_major).lower() == 'true':
         globals.args.upgrade_major = True
@@ -108,7 +101,8 @@ def main():
     else:
         globals.args.upgrade_major = False
 
-    if globals.args.incremental_results is None or globals.args.incremental_results == 'false':
+    if globals.args.incremental_results is None or globals.args.incremental_results == 'false' or \
+            globals.args.incremental_results == '':
         globals.args.incremental_results = False
     elif str(globals.args.incremental_results).lower() == 'true':
         globals.args.incremental_results = True
@@ -116,7 +110,8 @@ def main():
     else:
         globals.args.incremental_results = False
 
-    if globals.args.upgrade_indirect is None or globals.args.upgrade_indirect == 'false':
+    if globals.args.upgrade_indirect is None or globals.args.upgrade_indirect == 'false' or \
+            globals.args.upgrade_indirect == '':
         globals.args.upgrade_indirect = False
     elif str(globals.args.upgrade_indirect).lower() == 'true':
         print('- Calculate upgrades for direct dependencies to address indirect vulnerabilities')
@@ -137,11 +132,11 @@ def main():
 
     if globals.args.project is not None and globals.args.project != '':
         runargs.append("--detect.project.name=" + globals.args.project)
-        print(f'- BD project name {globals.args.project}')
+        print(f"- BD project name '{globals.args.project}'")
 
     if globals.args.version is not None and globals.args.version != '':
         runargs.append("--detect.project.version.name=" + globals.args.version)
-        print(f'- BD project version name {globals.args.version}')
+        print(f"- BD project version name '{globals.args.version}'")
 
     if globals.args.detect_opts is not None and globals.args.detect_opts != '':
         for opt in str(globals.args.detect_opts).split(','):
