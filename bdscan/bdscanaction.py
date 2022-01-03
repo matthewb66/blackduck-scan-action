@@ -9,11 +9,11 @@ from bdscan import scan
 
 def main():
     # os.chdir('/Users/mbrad/working/duck_hub_ORI')
-    parser = argparse.ArgumentParser(description="Run Black Duck Security Scan")
+    parser = argparse.ArgumentParser(description="Run Black Duck Security Scan in Github")
     parser.add_argument('--debug', default=0, help='set debug level [0-9]')
     parser.add_argument("--url", required=True, type=str, help="Black Duck Hub URL")
     parser.add_argument("--token", required=True, type=str, help="Black Duck Hub Token")
-    parser.add_argument("--trustcert", default="false", type=str, help="Black Duck trust certificate")
+    parser.add_argument("--trustcert", default="false", type=str, help="Trust Black Duck server certificate")
     parser.add_argument("--project", type=str, help="Project name")
     parser.add_argument("--version", type=str, help="Project version name")
     parser.add_argument("--mode", default="rapid", type=str,
@@ -27,7 +27,7 @@ def main():
     parser.add_argument("--sarif", type=str, help="SARIF output file")
     parser.add_argument("--incremental_results", default="false", type=str,
                         help="Compare to previous intelligent scan project - only report new/changed components")
-    parser.add_argument("--upgrade_indirect", default="false", type=str,
+    parser.add_argument("--upgrade_indirect", default="true", type=str,
                         help="Attempt upgrade for vulnerable indirect dependencies by upgrading direct parents")
     parser.add_argument("--detect_opts", type=str,
                         help="Passthrough options to Detect, comma delimited, exclude leading hyphens")
