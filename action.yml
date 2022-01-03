@@ -7,7 +7,6 @@ branding:
 inputs:
   debug:
     description: "Debugging"
-    default: "0"
   url:
     description: "Black Duck URL"
   token:
@@ -34,7 +33,6 @@ inputs:
     default: "false"
   sarif:
     description: "Output file for SARIF"
-    default: ""
   incremental_results:
     description: "Incremental analysis"
     default: "false"
@@ -46,7 +44,6 @@ inputs:
     default: "true"
   detect_opts:
     description: "Passthrough options to Detect, comma delimited, exclude leading hyphens"
-    default: ""
 runs:
   using: "docker"
   image: "Dockerfile"
