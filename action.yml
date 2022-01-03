@@ -12,8 +12,12 @@ inputs:
     description: "Black Duck URL"
   token:
     description: "Black Duck API Token"
+  trustcert:
+    description: "Trust Black Duck server certificate"
   project:
     description: "Project name in the Black Duck server"
+  version:
+    description: "Project version name in the Black Duck server"
   mode:
     description: "Scanning mode, intelligent or rapid"
     default: "rapid"
@@ -30,7 +34,7 @@ inputs:
     default: "false"
   sarif:
     description: "Output file for SARIF"
-    default: "blackduck-sarif.json"
+    default: ""
   incremental_results:
     description: "Incremental analysis"
     default: "false"
@@ -40,6 +44,9 @@ inputs:
   upgrade_indirect:
     description: "Test & upgrade direct dependencies with vulnerable transitive (indirect) dependencies"
     default: "true"
+  detect_opts:
+    description: "Passthrough options to Detect, comma delimited, exclude leading hyphens"
+    default: ""
 runs:
   using: "docker"
   image: "Dockerfile"
@@ -50,12 +57,16 @@ runs:
   - ${{ inputs.url }}
   - --token
   - ${{ inputs.token }}
+  - --trustcert
+  - ${{ inputs.trustcert }}
   - --mode
   - ${{ inputs.mode }}
   - --output
   - ${{ inputs.output }}
   - --project
   - ${{ inputs.project }}
+  - --version
+  - ${{ inputs.version }}
   - --fix_pr
   - ${{ inputs.fix_pr }}
   - --comment_on_pr
@@ -68,3 +79,5 @@ runs:
   - ${{ inputs.upgrade_major }}
   - --upgrade_indirect
   - ${{ inputs.upgrade_indirect }}
+  - --detect_opts
+  - ${{ inputs.detect_opts }}
