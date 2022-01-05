@@ -15,7 +15,7 @@ from BlackDuckUtils import NugetUtils
 def get_blackduck_status(output_dir):
     bd_output_status_glob = max(glob.glob(output_dir + "/runs/*/status/status.json"), key=os.path.getmtime)
     if len(bd_output_status_glob) == 0:
-        print("ERROR: Unable to find output scan files in: " + output_dir + "/runs/*/status/status.json")
+        print("BD-Scan-Action: ERROR: Unable to find output scan files in: " + output_dir + "/runs/*/status/status.json")
         sys.exit(1)
 
     bd_output_status = bd_output_status_glob
@@ -38,7 +38,7 @@ def get_blackduck_status(output_dir):
                     globals.printdebug(f"DEBUG: Explanation: {explanation} File: {package_file}")
 
     if found_detectors == 0:
-        print(f"WARNING: No package manager scan identified (empty scan?) - Exiting")
+        print(f"BD-Scan-Action: WARN: No package manager scan identified (empty scan?) - Exiting")
         sys.exit(2)
 
     # Find project name and version to use in looking up baseline data
@@ -55,7 +55,7 @@ def get_rapid_scan_results(output_dir, bd):
         return None
     bd_rapid_output_file_glob = max(filelist, key=os.path.getmtime)
     if len(bd_rapid_output_file_glob) == 0:
-        print("ERROR: Unable to find output scan files in: " + output_dir + "/runs/*/scan/*.json")
+        print("BD-Scan-Action: ERROR: Unable to find output scan files in: " + output_dir + "/runs/*/scan/*.json")
         return None
 
     bd_rapid_output_file = bd_rapid_output_file_glob
@@ -74,7 +74,7 @@ def get_rapid_scan_results(output_dir, bd):
         rapid_scan_results = bd.get_json(developer_scan_url)
     except Exception as e:
         print(
-            f"ERROR: Unable to fetch developer scan '{developer_scan_url}' \
+            f"BD-Scan-Action: ERROR: Unable to fetch developer scan '{developer_scan_url}' \
 - note that these are limited lifetime and this process must run immediately following the rapid scan")
         raise
 
@@ -124,26 +124,26 @@ version {item['versionName']} because it was not seen in baseline")
         if comp_ns == "npmjs":
             http_name = NpmUtils.convert_dep_to_bdio(item['componentIdentifier'])
             if pm != '' and pm != 'npm':
-                print(f"ERROR: Mixed package managers not supported")
+                print(f"BD-Scan-Action: ERROR: Mixed package managers not supported")
                 sys.exit(1)
             else:
                 pm = 'npm'
         elif comp_ns == "maven":
             http_name = MavenUtils.convert_to_bdio(item['componentIdentifier'])
             if pm != '' and pm != 'maven':
-                print(f"ERROR: Mixed package managers not supported")
+                print(f"BD-Scan-Action: ERROR: Mixed package managers not supported")
                 sys.exit(1)
             else:
                 pm = 'maven'
         elif comp_ns == "nuget":
             http_name = NugetUtils.convert_to_bdio(item['componentIdentifier'])
             if pm != '' and pm != 'nuget':
-                print(f"ERROR: Mixed package managers not supported")
+                print(f"BD-Scan-Action: ERROR: Mixed package managers not supported")
                 sys.exit(1)
             else:
                 pm = 'nuget'
         else:
-            print(f"ERROR: Domain '{comp_ns}' not supported yet")
+            print(f"BD-Scan-Action: ERROR: Domain '{comp_ns}' not supported yet")
             sys.exit(1)
 
         dep_dict[item['componentIdentifier']] = {
@@ -199,7 +199,7 @@ version {item['versionName']} because it was not seen in baseline")
 
                         # Then log the direct dependencies directly
                         if direct_dep != '' and dep_vulnerable and direct_dep not in direct_deps_to_upgrade.keys():
-                            direct_deps_to_upgrade[item['componentIdentifier']] = \
+                            direct_deps_to_upgrade[direct_dep] = \
                                 bu.normalise_dep(pm, item['componentIdentifier'])
                             # print(f'TRANSITIVE ANCESTOR VULNERABLE: {direct_dep} (child {http_name})')
 

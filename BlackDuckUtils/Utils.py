@@ -59,9 +59,9 @@ def run_detect(jarfile, runargs, show_output):
                 if outp.find(verstr) > 0:
                     vername = outp[outp.find(verstr) + len(verstr) + 1:].rstrip()
     except OSError:
-        print('ERROR: Unable to run Detect')
+        print('BD-Scan-Action: ERROR: Unable to run Detect')
     except Exception as e:
-        print(f'ERROR: {str(e)}')
+        print(f'BD-Scan-Action: ERROR: {str(e)}')
     else:
         retval = proc.poll()
 
@@ -86,7 +86,7 @@ def parse_component_id(component_id):
     elif comp_ns == "nuget":
         comp_ns, comp_name, comp_version = NugetUtils.parse_component_id(component_id)
     else:
-        print(f"ERROR: Package domain '{comp_ns}' is unsupported at this time")
+        print(f"BD-Scan-Action: ERROR: Package domain '{comp_ns}' is unsupported at this time")
         sys.exit(1)
 
     return comp_ns, comp_name, comp_version
@@ -112,7 +112,7 @@ def get_upgrade_guidance(bd, component_identifier):
     globals.printdebug("DEBUG: Component search result=" + json.dumps(component_result, indent=4) + "\n")
 
     # Get component upgrade data
-    globals.printdebug(f"DBEUG: Looking up upgrade guidance for component '{component_result['componentName']}'")
+    # globals.printdebug(f"DBEUG: Looking up upgrade guidance for component '{component_result['componentName']}'")
     component_upgrade_data = bd.get_json(component_result['version'] + "/upgrade-guidance")
     globals.printdebug("DEBUG: Component upgrade data=" + json.dumps(component_upgrade_data, indent=4) + "\n")
 
@@ -185,7 +185,7 @@ def get_projver(bd, projname, vername):
         for ver in versions:
             if ver['versionName'] == vername:
                 return ver['_meta']['href']
-    print("ERROR: Version '{}' does not exist in project '{}'".format(projname, vername))
+    print("BD-Scan-Action: ERROR: Version '{}' does not exist in project '{}'".format(projname, vername))
     return ''
 
 
@@ -208,7 +208,7 @@ def get_detect_jar():
 synopsys-detect?properties=DETECT_LATEST_7"
     r = requests.get(url, allow_redirects=True)
     if not r.ok:
-        print('ERROR: detect_wrapper - Unable to load detect config {}'.format(r.reason))
+        print('BD-Scan-Action: ERROR: Unable to load detect config {}'.format(r.reason))
         return ''
 
     rjson = r.json()
@@ -220,7 +220,7 @@ synopsys-detect?properties=DETECT_LATEST_7"
             if os.path.isfile(jarpath):
                 globals.detect_jar = jarpath
                 return jarpath
-            print('INFO: detect_wrapper - Downloading detect jar file')
+            print('BD-Scan-Action: INFO: Downloading detect jar file')
 
             j = requests.get(djar, allow_redirects=True)
             # if globals.proxy_host != '' and globals.proxy_port != '':
@@ -230,7 +230,7 @@ synopsys-detect?properties=DETECT_LATEST_7"
                 if os.path.isfile(jarpath):
                     globals.detect_jar = jarpath
                     return jarpath
-    print('ERROR: detect_wrapper - Unable to download detect jar file')
+    print('BD-Scan-Action: ERROR: Unable to download detect jar file')
     return ''
 
 
@@ -270,12 +270,13 @@ def attempt_indirect_upgrade(pm, deps_list, upgrade_dict, detect_jar, connectopt
         dirname.cleanup()
         return 0, None
 
-    print('RECOMMENDED UPGRADES FOR DIRECT DEPENDENCIES:')
+    os.chdir(origdir)
+    dirname.cleanup()
+
+    print('\nRECOMMENDED UPGRADES FOR DIRECT DEPENDENCIES:')
     for upgrade in good_upgrades_dict.keys():
         print(f"- {upgrade}: Upgrade version = {good_upgrades_dict[upgrade]}")
 
-    os.chdir(origdir)
-    dirname.cleanup()
     return good_upgrades_dict
 
 
@@ -331,7 +332,7 @@ def process_scan(scan_folder, bd, baseline_comp_cache, incremental, upgrade_indi
     bdio_graph, bdio_projects = bdio.get_bdio_dependency_graph(scan_folder)
 
     if len(bdio_projects) == 0:
-        print("ERROR: Unable to find base project in BDIO file")
+        print("BD-Scan-Action: ERROR: Unable to find base project in BDIO file")
         sys.exit(1)
 
     rapid_scan_data = bo.get_rapid_scan_results(scan_folder, bd)

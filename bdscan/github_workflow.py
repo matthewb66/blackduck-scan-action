@@ -24,7 +24,7 @@ def github_create_pull_request_comment(g, pr, comments_markdown):
 
 def github_commit_file_and_create_fixpr(g, fix_pr_node):
     if len(globals.files_to_patch) == 0:
-        print('WARNING: Unable to apply fix patch - cannot determine containing package file')
+        print('BD-Scan-Action: WARN: Unable to apply fix patch - cannot determine containing package file')
         return False
     globals.printdebug(f"DEBUG: Look up GitHub repo '{globals.github_repo}'")
     repo = g.get_repo(globals.github_repo)
@@ -52,7 +52,7 @@ def github_commit_file_and_create_fixpr(g, fix_pr_node):
             with open(globals.files_to_patch[file_to_patch], 'r') as fp:
                 file_contents = fp.read()
         except Exception as exc:
-            print(f"ERROR: Unable to open package file '{globals.files_to_patch[file_to_patch]}' - {str(exc)}")
+            print(f"BD-Scan-Action: ERROR: Unable to open package file '{globals.files_to_patch[file_to_patch]}' - {str(exc)}")
             return False
 
         globals.printdebug(f"DEBUG: Update file '{file_to_patch}' with commit message '{commit_message}'")
@@ -92,7 +92,7 @@ def github_fix_pr():
     # fix_pr_components = dict()
     if (globals.github_token is None or globals.github_repo is None or globals.github_branch is None or
             globals.github_api_url is None):
-        print("ERROR: Cannot find GITHUB_TOKEN, GITHUB_REPOSITORY, GITHUB_REF and/or GITHUB_API_URL in the "
+        print("BD-Scan-Action: ERROR: Cannot find GITHUB_TOKEN, GITHUB_REPOSITORY, GITHUB_REF and/or GITHUB_API_URL in the "
               "environment - are you running from a GitHub action?")
         return False
 
@@ -133,11 +133,11 @@ def github_fix_pr():
                                                                          fix_pr_node['versionFrom'],
                                                                          fix_pr_node['versionTo'])
         else:
-            print(f"INFO: Generating a Fix PR for packages of type '{fix_pr_node['ns']}' is not supported yet")
+            print(f"BD-Scan-Action: WARN: Generating a Fix PR for packages of type '{fix_pr_node['ns']}' is not supported yet")
             return False
 
         if len(globals.files_to_patch) == 0:
-            print('WARNING: Unable to apply fix patch - cannot determine containing package file')
+            print('BD-Scan-Action: WARN: Unable to apply fix patch - cannot determine containing package file')
             return False
 
         if not github_commit_file_and_create_fixpr(g, fix_pr_node):
@@ -148,7 +148,7 @@ def github_fix_pr():
 def github_pr_comment():
     if (globals.github_token is None or globals.github_repo is None or globals.github_ref is None or
             globals.github_api_url is None or globals.github_sha is None):
-        print("ERROR: Cannot find GITHUB_TOKEN, GITHUB_REPOSITORY, GITHUB_REF, GTIHUB_SHA and/or GITHUB_API_URL in the "
+        print("BD-Scan-Action: ERROR: Cannot find GITHUB_TOKEN, GITHUB_REPOSITORY, GITHUB_REF, GTIHUB_SHA and/or GITHUB_API_URL in the "
               "environment - are you running from a GitHub action?")
         return False
 
@@ -174,7 +174,7 @@ def github_pr_comment():
     globals.printdebug(f"DEBUG: Pull request #{pull_number_for_sha}")
 
     if pull_number_for_sha is None:
-        print(f"ERROR: Unable to find pull request #{pull_number_for_sha}")
+        print(f"BD-Scan-Action: ERROR: Unable to find pull request #{pull_number_for_sha}")
         return False
 
     pr = repo.get_pull(pull_number_for_sha)
@@ -216,7 +216,7 @@ def github_pr_comment():
 def github_set_commit_status(is_failure):
     if (globals.github_token is None or globals.github_repo is None or globals.github_ref is None or
             globals.github_api_url is None or globals.github_sha is None):
-        print("ERROR: Cannot find GITHUB_TOKEN, GITHUB_REPOSITORY, GITHUB_REF, GTIHUB_SHA and/or GITHUB_API_URL "
+        print("BD-Scan-Action: ERROR: Cannot find GITHUB_TOKEN, GITHUB_REPOSITORY, GITHUB_REF, GTIHUB_SHA and/or GITHUB_API_URL "
               "in the environment - are you running from a GitHub action?")
         sys.exit(1)
 

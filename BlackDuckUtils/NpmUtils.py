@@ -27,25 +27,25 @@ def convert_dep_to_bdio(component_id):
 
 def upgrade_npm_dependency(package_file, component_name, current_version, component_version):
     # Key will be actual name, value will be local filename
-    if package_file.endswith('Unknown'):
+    if package_file == 'Unknown':
         return None
 
     files_to_patch = dict()
 
     # dirname = tempfile.TemporaryDirectory()
     dirname = tempfile.mkdtemp(prefix="snps-patch-" + component_name + "-" + component_version)
-    print(f"DEBUG: dirname is: {dirname}")
-    print(f"DEBUG: copied {package_file} to {shutil.copy2(package_file, dirname + '/' + package_file)}")
+    globals.printdebug(f"DEBUG: dirname is: {dirname}")
+    globals.printdebug(f"DEBUG: copied {package_file} to {shutil.copy2(package_file, dirname + '/' + package_file)}")
 
     origdir = os.getcwd()
     os.chdir(dirname)
-    print(f"DEBUG: changed folder to {os.getcwd()}")
+    globals.printdebug(f"DEBUG: changed folder to {os.getcwd()}")
 
     cmd = "npm install " + component_name + "@" + component_version
-    print(f"INFO: Executing NPM to update component: {cmd}")
+    print(f"BD-Scan-Action: INFO: Executing NPM to update component: {cmd}")
     err = os.system(cmd)
     if err > 0:
-        print(f"ERROR: Error {err} executing NPM command")
+        print(f"BD-Scan-Action: ERROR: Error {err} executing NPM command")
         os.chdir(origdir)
         dirname.cleanup()
         return None
@@ -109,9 +109,9 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
         if len(installed_packages) == 0:
             # print('No upgrades to test')
             continue
-        print(f'Validating {len(installed_packages)} potential upgrades')
+        print(f'BD-Scan-Action: Cycle {ind + 1} - Validating {len(installed_packages)} potential upgrades')
 
-        pvurl, projname, vername, retval = bu.run_detect(detect_jar, detect_connection_opts, True)
+        pvurl, projname, vername, retval = bu.run_detect(detect_jar, detect_connection_opts, False)
 
         if retval == 3:
             # Policy violation returned
