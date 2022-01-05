@@ -4,7 +4,7 @@ import shutil
 
 # import globals
 import tempfile
-import json
+# import json
 
 from BlackDuckUtils import Utils as bu
 # from BlackDuckUtils import BlackDuckOutput as bo
@@ -27,14 +27,19 @@ def convert_dep_to_bdio(component_id):
 
 def upgrade_npm_dependency(package_file, component_name, current_version, component_version):
     # Key will be actual name, value will be local filename
+    if package_file.endswith('Unknown'):
+        return None
+
     files_to_patch = dict()
 
     # dirname = tempfile.TemporaryDirectory()
     dirname = tempfile.mkdtemp(prefix="snps-patch-" + component_name + "-" + component_version)
+    print(f"DEBUG: dirname is: {dirname}")
+    print(f"DEBUG: copied {package_file} to {shutil.copy2(package_file, dirname + '/' + package_file)}")
 
-    shutil.copy2(package_file, dirname + "/" + package_file)
     origdir = os.getcwd()
     os.chdir(dirname)
+    print(f"DEBUG: changed folder to {os.getcwd()}")
 
     cmd = "npm install " + component_name + "@" + component_version
     print(f"INFO: Executing NPM to update component: {cmd}")
@@ -106,7 +111,7 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
             continue
         print(f'Validating {len(installed_packages)} potential upgrades')
 
-        pvurl, projname, vername, retval = bu.run_detect(detect_jar, detect_connection_opts, False)
+        pvurl, projname, vername, retval = bu.run_detect(detect_jar, detect_connection_opts, True)
 
         if retval == 3:
             # Policy violation returned
