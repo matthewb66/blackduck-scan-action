@@ -37,7 +37,7 @@ def convert_to_bdio(component_id):
 
 def upgrade_maven_dependency(package_file, component_name, current_version, component_version):
     # Key will be actual name, value will be local filename
-    if package_file.endswith('Unknown'):
+    if package_file == 'Unknown':
         return None
     files_to_patch = dict()
 
@@ -70,7 +70,7 @@ def upgrade_maven_dependency(package_file, component_name, current_version, comp
     with open(dirname + "/" + package_file, "wb") as fp:
         fp.write(xmlstr)
 
-    print(f"INFO: Updated Maven component in: {package_file}")
+    print(f"BD-Scan-Action: INFO: Updated Maven component in: {package_file}")
 
     files_to_patch[package_file] = dirname + "/" + package_file
 
@@ -79,7 +79,7 @@ def upgrade_maven_dependency(package_file, component_name, current_version, comp
 
 def create_pom(deps):
     if os.path.isfile('pom.xml'):
-        print('ERROR: Maven pom.xml file already exists')
+        print('BD-Scan-Action: ERROR: Maven pom.xml file already exists')
         return False
 
     dep_text = ''
@@ -155,12 +155,12 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
         if len(test_upgrade_list) == 0:
             # print('No upgrades to test')
             continue
-        print(f'Validating {len(test_dirdeps)} potential upgrades')
+        print(f'BD-Scan-Action: Cycle {ind + 1} - Validating {len(test_dirdeps)} potential upgrades')
 
         if not create_pom(test_upgrade_list):
             return None
 
-        pvurl, projname, vername, retval = bu.run_detect(detect_jar, detect_connection_opts, True)
+        pvurl, projname, vername, retval = bu.run_detect(detect_jar, detect_connection_opts, False)
 
         if retval == 3:
             # Policy violation returned

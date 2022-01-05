@@ -26,7 +26,9 @@ ENV MAVEN_HOME /usr/share/maven
 ENV MAVEN_CONFIG "$USER_HOME_DIR/.m2"
 
 # Install Dotnet
-#RUN apt-get install -y dotnet-runtime-6.0
+RUN curl -fsSL -o /tmp/dotnet-install.sh https://dot.net/v1/dotnet-install.sh \
+ && chmod +x /tmp/dotnet-install.sh -c Current \
+ && sh -c /tmp/dotnet-install.sh
 
 # scan-action specific
 WORKDIR /app

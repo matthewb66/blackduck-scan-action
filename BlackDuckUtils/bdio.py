@@ -45,12 +45,12 @@ def get_bdio_dependency_graph(output_dir):
     # Parse BDIO file into network graph
     bd_output_latest_dir = max(glob.glob(output_dir + "/runs/*/bdio"), key=os.path.getmtime)
     if (len(bd_output_latest_dir) == 0):
-        print("ERROR: Unable to find latest scan folder: " + output_dir + "/runs/*/bdio")
+        print("BD-Scan-Action: ERROR: Unable to find latest scan folder: " + output_dir + "/runs/*/bdio")
         sys.exit(1)
 
     bd_rapid_output_bdio = glob.glob(bd_output_latest_dir + "/*.bdio")
     if (len(bd_rapid_output_bdio) == 0):
-        print("ERROR: Unable to find output scan files in: " + output_dir + "/runs/*/bdio/*.bdio")
+        print("BD-Scan-Action: ERROR: Unable to find output scan files in: " + output_dir + "/runs/*/bdio/*.bdio")
         sys.exit(1)
 
     # TODO is there a case where there would be more than one BDIO file?
@@ -107,7 +107,7 @@ def get_dependency_type(bdio_graph, bdio_projects, componentIdentifier):
     elif (comp_ns == "maven"):
         comp_http_name = MavenUtils.convert_to_bdio(componentIdentifier)
     else:
-        print(f"ERROR: Domain '{comp_ns}' not supported yet")
+        print(f"BD-Scan-Action: ERROR: Domain '{comp_ns}' not supported yet")
         sys.exit(1)
 
     globals.printdebug(f"DEBUG: Looking for {comp_http_name}")

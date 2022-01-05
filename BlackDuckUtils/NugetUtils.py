@@ -38,9 +38,9 @@ def convert_to_bdio(component_id):
 
 def upgrade_nuget_dependency(package_file, component_name, current_version, upgrade_version):
     # Key will be actual name, value will be local filename
-    files_to_patch = dict()
     if package_file == 'Unknown':
         return files_to_patch
+    files_to_patch = dict()
 
     #dirname = tempfile.TemporaryDirectory()
     dirname = tempfile.mkdtemp(prefix="snps-patch-" + component_name + "-" + upgrade_version)
@@ -81,7 +81,7 @@ def upgrade_nuget_dependency(package_file, component_name, current_version, upgr
     with open(dirname + "/" + package_file, "wb") as fp:
         fp.write(xmlstr)
 
-    print(f"INFO: Updated Nuget component in: {package_file}")
+    print(f"BD-Scan-Action: INFO: Updated Nuget component in: {package_file}")
 
     files_to_patch[package_file] = dirname + "/" + package_file
 
@@ -90,7 +90,7 @@ def upgrade_nuget_dependency(package_file, component_name, current_version, upgr
 
 def create_csproj(deps):
     if os.path.isfile('test.csproj'):
-        print('ERROR: Maven test.csproj file already exists')
+        print('BD-Scan-Action: ERROR: Maven test.csproj file already exists')
         return False
 
     dep_text = ''
@@ -154,7 +154,7 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
         if len(test_upgrade_list) == 0:
             # print('No upgrades to test')
             continue
-        print(f'Validating {len(test_dirdeps)} potential upgrades')
+        print(f'BD-Scan-Action: Cycle {ind + 1} - Validating {len(test_dirdeps)} potential upgrades')
 
         if not create_csproj(test_upgrade_list):
             return None

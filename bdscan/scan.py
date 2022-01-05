@@ -24,7 +24,7 @@ def process_bd_scan(output):
     globals.baseline_comp_cache = dict()
     if globals.args.incremental_results:
         if pvurl == '':
-            print(f"WARN: Unable to find project '{project_baseline_name}' \
+            print(f"BD-Scan-Action: WARN: Unable to find project '{project_baseline_name}' \
 version '{project_baseline_version}' - will not present incremental results")
         else:
             globals.printdebug(f"DEBUG: Project Version URL: {pvurl}")
@@ -219,32 +219,29 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
         )
 
         if dir_vuln_count > 0 and children_num_vulns > 0:
-            stext = f"## {comp_name}/{comp_version}" \
+            stext = f"## {comp_name}/{comp_version}\n" \
                     f"The direct dependency {comp_name}/{comp_version} has {dir_vuln_count} vulnerabilities (max " \
                     f"score {dir_max_sev}) and {children_num_vulns} vulnerabilities in child dependencies (max score " \
                     f"{children_max_sev})."
             ctext = f"The direct dependency {comp_name}/{comp_version} has {dir_vuln_count} vulnerabilities (max " \
                     f"score {dir_max_sev}) and {children_num_vulns} vulnerabilities in child dependencies (max score " \
                     f"{children_max_sev}).\n\nList of direct and indirect vulnerabilities:\n{','.join(dir_vulns)}"
-            ltext = stext + f"\n\nVulnerabilities for {comp_name}/{comp_version}:\n\n" + \
-                '\n'.join(md_comp_vulns_table) + '\n'
+            ltext = stext + "\n\n" + '\n'.join(md_comp_vulns_table) + '\n'
         elif dir_vuln_count > 0 and children_num_vulns == 0:
-            stext = f"## {comp_name}/{comp_version}" \
+            stext = f"## {comp_name}/{comp_version}\n" \
                     f"The direct dependency {comp_name}/{comp_version} has {dir_vuln_count} vulnerabilities (max " \
                     f"score {dir_max_sev})."
             ctext = f"The direct dependency {comp_name}/{comp_version} has {dir_vuln_count} vulnerabilities (max " \
                     f"score {dir_max_sev}).\n\nList of direct vulnerabilities:\n{','.join(dir_vulns)}"
-            ltext = stext + f"\n\nVulnerabilities for {comp_name}/{comp_version}:\n\n" + \
-                '\n'.join(md_comp_vulns_table) + '\n'
+            ltext = stext + "\n\n" + '\n'.join(md_comp_vulns_table) + '\n'
         elif children_num_vulns > 0:
-            stext = f"## {comp_name}/{comp_version}" \
+            stext = f"## {comp_name}/{comp_version}\n" \
                     f"The direct dependency {comp_name}/{comp_version} has {children_num_vulns} vulnerabilities in " \
                     f"child dependencies (max score {children_max_sev})."
             ctext = f"The direct dependency {comp_name}/{comp_version} has {children_num_vulns} vulnerabilities in " \
                     f"child dependencies (max score {children_max_sev})\n\n" \
                     f"List of indirect vulnerabilities:\n{','.join(dir_vulns)}."
-            ltext = stext + f"\n\nVulnerabilities for {comp_name}/{comp_version}:\n\n" + \
-                '\n'.join(md_comp_vulns_table) + '\n'
+            ltext = stext + "\n\n" + '\n'.join(md_comp_vulns_table) + '\n'
         else:
             stext = ''
             ctext = ''
@@ -380,7 +377,7 @@ def write_sarif(sarif_file):
         with open(sarif_file, "w") as fp:
             json.dump(code_security_scan_report, fp, indent=4)
     except Exception as e:
-        print(f"ERROR: Unable to write to SARIF output file '{sarif_file} - '" + str(e))
+        print(f"BD-Scan-Action: ERROR: Unable to write to SARIF output file '{sarif_file} - '" + str(e))
         sys.exit(1)
 
 
@@ -388,7 +385,7 @@ def main_process(output, runargs):
     # Run DETECT
     pvurl, projname, vername, detect_return_code = bu.run_detect(globals.detect_jar, runargs, True)
     if detect_return_code > 0 and detect_return_code != 3:
-        print(f"ERROR: Black Duck detect returned exit code {detect_return_code}")
+        print(f"BD-Scan-Action: ERROR: Black Duck detect returned exit code {detect_return_code}")
         sys.exit(detect_return_code)
 
     if globals.args.mode == "intelligent":
@@ -402,14 +399,14 @@ def main_process(output, runargs):
                         timeout=300)
 
     if globals.bd is None:
-        print('ERROR: Unable to connect to Black Duck server - check credentials')
+        print('BD-Scan-Action: ERROR: Unable to connect to Black Duck server - check credentials')
 
     # Process the Rapid scan
-    print('Processing scan data ...')
+    print('\nBD-Scan-Action: Processing scan data ...')
     rapid_scan_data, dep_dict, direct_deps_to_upgrade, pm = process_bd_scan(output)
 
     if rapid_scan_data is None:
-        print('INFO: No policy violations found - Ending gracefully')
+        print('BD-Scan-Action: INFO: No policy violations found - Ending gracefully')
         sys.exit(0)
 
     if globals.args.upgrade_indirect:
@@ -420,7 +417,7 @@ def main_process(output, runargs):
                                                                             globals.args.trustcert)
 
         # Work out possible upgrades
-        print('Identifying upgrades ...')
+        print('BD-Scan-Action: Identifying upgrades ...')
         upgrade_dict = {}
         for dep in direct_deps_to_upgrade:
             if dep in version_dict.keys() and dep in guidance_dict.keys():
@@ -436,7 +433,7 @@ def main_process(output, runargs):
     create_scan_outputs(rapid_scan_data, good_upgrades, dep_dict, direct_deps_to_upgrade)
 
     if globals.args.sarif is not None and globals.args.sarif != '':
-        print(f"Writing sarif output file '{globals.args.sarif}' ...")
+        print(f"BD-Scan-Action: Writing sarif output file '{globals.args.sarif}' ...")
         write_sarif(globals.args.sarif)
 
     globals.github_token = os.getenv("GITHUB_TOKEN")
@@ -449,7 +446,7 @@ def main_process(output, runargs):
     if globals.args.fix_pr and len(globals.fix_pr_data.values()) > 0:
         if github_workflow.github_fix_pr():
             github_workflow.github_set_commit_status(True)
-            print('Created fix pull request')
+            print('BD-Scan-Action: Created fix pull request')
         else:
             print('ERROR: Unable to create fix pull request')
             sys.exit(1)
@@ -458,7 +455,7 @@ def main_process(output, runargs):
     if globals.args.comment_on_pr and len(globals.comment_on_pr_comments) > 0:
         if github_workflow.github_pr_comment():
             github_workflow.github_set_commit_status(True)
-            print('Created comment on existing pull request')
+            print('BD-Scan-Action: Created comment on existing pull request')
         else:
             print('ERROR: Unable to create comment on existing pull request')
             sys.exit(1)

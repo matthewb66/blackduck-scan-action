@@ -34,7 +34,7 @@ def main():
 
     globals.args = parser.parse_args()
 
-    print('--- BD PLUGIN CONFIGURATION ---------------------------------------------')
+    print('BD-Scan-Action: Start\n\n--- BD-SCAN-ACTION CONFIGURATION ---------------------------------------------')
 
     if globals.args.url is None or globals.args.url == '':
         globals.args.url = os.getenv("BLACKDUCK_URL")
@@ -42,7 +42,7 @@ def main():
         globals.args.token = os.getenv("BLACKDUCK_API_TOKEN")
 
     if globals.args.url is None or globals.args.token is None:
-        print(f"ERROR: Must specify Black Duck Hub URL and API Token")
+        print(f"BD-Scan-Action: ERROR: Must specify Black Duck Hub URL and API Token")
         sys.exit(1)
 
     print(f'- BD URL {globals.args.url}')
@@ -149,13 +149,13 @@ def main():
     else:
         globals.args.sarif = None
 
-    print('-------------------------------------------------------------------------')
+    print('-------------------------------------------------------------------------\n')
     if globals.args.sarif is None and not globals.args.comment_on_pr and not globals.args.fix_pr and \
             globals.args.mode == 'rapid':
-        print("Nothing to do - specify at least 1 option from 'sarif, comment_on_pr, fix_pr'")
+        print("BD-Scan-Action: Nothing to do - specify at least 1 option from 'sarif, comment_on_pr, fix_pr'")
         sys.exit(1)
 
-    print(f"INFO: Running Black Duck detect with the following options: {runargs}")
+    print(f"BD-Scan-Action: INFO: Running Black Duck detect with the following options: {runargs}")
 
     scan.main_process(globals.args.output, runargs)
 
