@@ -199,7 +199,7 @@ version {item['versionName']} because it was not seen in baseline")
 
                         # Then log the direct dependencies directly
                         if direct_dep != '' and dep_vulnerable and direct_dep not in direct_deps_to_upgrade.keys():
-                            direct_deps_to_upgrade[item['componentIdentifier']] = \
+                            direct_deps_to_upgrade[direct_dep] = \
                                 bu.normalise_dep(pm, item['componentIdentifier'])
                             # print(f'TRANSITIVE ANCESTOR VULNERABLE: {direct_dep} (child {http_name})')
 

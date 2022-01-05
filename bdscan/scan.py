@@ -451,7 +451,8 @@ def main_process(output, runargs):
             github_workflow.github_set_commit_status(True)
             print('Created fix pull request')
         else:
-            print('Unable to create fix pull request')
+            print('ERROR: Unable to create fix pull request')
+            sys.exit(1)
 
     # Optionally comment on the pull request this is for
     if globals.args.comment_on_pr and len(globals.comment_on_pr_comments) > 0:
@@ -459,7 +460,8 @@ def main_process(output, runargs):
             github_workflow.github_set_commit_status(True)
             print('Created comment on existing pull request')
         else:
-            print('Unable to create comment on existing pull request')
+            print('ERROR: Unable to create comment on existing pull request')
+            sys.exit(1)
 
-    print('Done')
+    print('Done - SUCCESS')
     sys.exit(0)
