@@ -4,7 +4,7 @@ import re
 from BlackDuckUtils import globals
 # import sys
 import tempfile
-import json
+# import json
 
 import xml.etree.ElementTree as ET
 
@@ -37,6 +37,8 @@ def convert_to_bdio(component_id):
 
 def upgrade_maven_dependency(package_file, component_name, current_version, component_version):
     # Key will be actual name, value will be local filename
+    if package_file.endswith('Unknown'):
+        return None
     files_to_patch = dict()
 
     # dirname = tempfile.TemporaryDirectory()
@@ -121,8 +123,8 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
                              upgrade_indirect, upgrade_major):
     # Need to test the short & long term upgrade guidance separately
     detect_connection_opts.append("--detect.blackduck.scan.mode=RAPID")
-    detect_connection_opts.append("--detect.detector.buildless=true")
-    detect_connection_opts.append("--detect.maven.buildless.legacy.mode=false")
+    # detect_connection_opts.append("--detect.detector.buildless=true")
+    # detect_connection_opts.append("--detect.maven.buildless.legacy.mode=false")
     detect_connection_opts.append(f"--detect.output.path=upgrade-tests")
     detect_connection_opts.append("--detect.cleanup=false")
 
@@ -158,7 +160,7 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
         if not create_pom(test_upgrade_list):
             return None
 
-        pvurl, projname, vername, retval = bu.run_detect(detect_jar, detect_connection_opts, False)
+        pvurl, projname, vername, retval = bu.run_detect(detect_jar, detect_connection_opts, True)
 
         if retval == 3:
             # Policy violation returned

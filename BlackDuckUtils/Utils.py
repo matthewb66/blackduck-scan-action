@@ -143,7 +143,11 @@ def line_num_for_phrase_in_file(phrase, filename):
 def detect_package_file(detected_package_files, componentid):
     comp_ns, comp_name, version = parse_component_id(componentid)
 
+    # Need to skip package-lock.json if component exists in package.json
     for package_file in detected_package_files:
+        if package_file.endswith('package-lock.json'):
+            print('DEBUG: skipping package-lock.json')
+            continue
         globals.printdebug(f"DEBUG: Searching in '{package_file}' for '{comp_name}'")
         line = line_num_for_phrase_in_file(comp_name, package_file)
         globals.printdebug(f"DEBUG: line={line}'")
