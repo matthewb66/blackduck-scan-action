@@ -1,8 +1,7 @@
 import os
 import re
-import shutil
+# import shutil
 
-import globals
 import tempfile
 # import json
 
@@ -34,12 +33,9 @@ def upgrade_npm_dependency(package_file, component_name, current_version, compon
 
     # dirname = tempfile.TemporaryDirectory()
     dirname = tempfile.mkdtemp(prefix="snps-patch-" + component_name + "-" + component_version)
-    globals.printdebug(f"DEBUG: dirname is: {dirname}")
-    globals.printdebug(f"DEBUG: copied {package_file} to {shutil.copy2(package_file, dirname + '/' + package_file)}")
 
     origdir = os.getcwd()
     os.chdir(dirname)
-    globals.printdebug(f"DEBUG: changed folder to {os.getcwd()}")
 
     cmd = "npm install " + component_name + "@" + component_version
     print(f"BD-Scan-Action: INFO: Executing NPM to update component: {cmd}")
