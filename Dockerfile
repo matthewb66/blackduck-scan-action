@@ -26,9 +26,10 @@ ENV MAVEN_HOME /usr/share/maven
 ENV MAVEN_CONFIG "$USER_HOME_DIR/.m2"
 
 # Install Dotnet
-RUN curl -fsSL -o /tmp/dotnet-install.sh https://dot.net/v1/dotnet-install.sh \
+RUN apk add bash icu-libs krb5-libs libgcc libintl libssl1.1 libstdc++ zlib \
+ && curl -fsSL -o /tmp/dotnet-install.sh https://dot.net/v1/dotnet-install.sh \
  && chmod +x /tmp/dotnet-install.sh \
- && /tmp/dotnet-install.sh --runtime dotnet --channel 3.0
+ && /tmp/dotnet-install.sh --channel 5.0
 ENV PATH="$PATH:/root/.dotnet"
 
 # scan-action specific
