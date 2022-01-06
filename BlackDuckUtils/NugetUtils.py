@@ -1,10 +1,12 @@
 import os
 import re
 # import shutil
-from BlackDuckUtils import globals
+# from BlackDuckUtils import globals
 # import sys
 import tempfile
 import json
+import globals
+from lxml import etree
 
 import xml.etree.ElementTree as ET
 
@@ -38,14 +40,12 @@ def convert_to_bdio(component_id):
 
 def upgrade_nuget_dependency(package_file, component_name, current_version, upgrade_version):
     # Key will be actual name, value will be local filename
+    files_to_patch = dict()
     if package_file == 'Unknown':
         return files_to_patch
-    files_to_patch = dict()
 
     #dirname = tempfile.TemporaryDirectory()
     dirname = tempfile.mkdtemp(prefix="snps-patch-" + component_name + "-" + upgrade_version)
-
-    from lxml import etree
 
     tree = etree.parse(package_file)
     root = tree.getroot()
