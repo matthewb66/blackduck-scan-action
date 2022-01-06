@@ -29,6 +29,7 @@ ENV MAVEN_CONFIG "$USER_HOME_DIR/.m2"
 RUN curl -fsSL -o /tmp/dotnet-install.sh https://dot.net/v1/dotnet-install.sh \
  && chmod +x /tmp/dotnet-install.sh \
  && sh -c /tmp/dotnet-install.sh -c Current
+ENV PATH="$PATH:/root/.dotnet"
 
 # scan-action specific
 WORKDIR /app
