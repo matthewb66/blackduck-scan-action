@@ -2,7 +2,7 @@ import os
 import re
 import shutil
 
-# import globals
+import globals
 import tempfile
 # import json
 

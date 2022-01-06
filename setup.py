@@ -8,7 +8,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="blackduck-scan-action",
-    version="1.0.10",
+    version="1.0.11",
     author="Matthew Brady",
     author_email="mbrad@synopsys.com",
     description="Github Action to scan for SCA using Synopsys Black Duck.",
@@ -24,6 +24,7 @@ setuptools.setup(
         "networkx",
         "requests",
         "semver",
+        "lxml",
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
