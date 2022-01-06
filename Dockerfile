@@ -28,7 +28,7 @@ ENV MAVEN_CONFIG "$USER_HOME_DIR/.m2"
 # Install Dotnet
 RUN curl -fsSL -o /tmp/dotnet-install.sh https://dot.net/v1/dotnet-install.sh \
  && chmod +x /tmp/dotnet-install.sh \
- && sh -c /tmp/dotnet-install.sh --runtime dotnet --version 3.0.0
+ && /tmp/dotnet-install.sh --runtime dotnet --channel 3.0
 ENV PATH="$PATH:/root/.dotnet"
 
 # scan-action specific
