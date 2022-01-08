@@ -34,7 +34,7 @@ def main():
 
     globals.args = parser.parse_args()
 
-    print('BD-Scan-Action: Start\n\n--- BD-SCAN-ACTION CONFIGURATION ---------------------------------------------')
+    print(f'BD-Scan-Action: Start\n\n--- BD-SCAN-ACTION CONFIGURATION (version {globals.scan_utility_version } -------')
 
     if globals.args.url is None or globals.args.url == '':
         globals.args.url = os.getenv("BLACKDUCK_URL")
