@@ -5,7 +5,7 @@ from BlackDuckUtils import globals
 # import sys
 import tempfile
 # import json
-import globals
+# import globals
 
 import xml.etree.ElementTree as ET
 

@@ -4,8 +4,8 @@ import re
 # from BlackDuckUtils import globals
 # import sys
 import tempfile
-import json
-import globals
+# import json
+# import globals
 from lxml import etree
 
 import xml.etree.ElementTree as ET
