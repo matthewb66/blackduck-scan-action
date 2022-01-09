@@ -1,7 +1,7 @@
 import os
 import re
 # import shutil
-# from BlackDuckUtils import globals
+from bdscan import globals
 # import sys
 import tempfile
 # import json
@@ -44,7 +44,7 @@ def upgrade_nuget_dependency(package_file, component_name, current_version, upgr
     if package_file == 'Unknown':
         return files_to_patch
 
-    #dirname = tempfile.TemporaryDirectory()
+    # dirname = tempfile.TemporaryDirectory()
     dirname = tempfile.mkdtemp(prefix="snps-patch-" + component_name + "-" + upgrade_version)
 
     tree = etree.parse(package_file)
@@ -52,7 +52,7 @@ def upgrade_nuget_dependency(package_file, component_name, current_version, upgr
 
     namespaces = {'ns': 'http://schemas.microsoft.com/developer/msbuild/2003'}
     myval = tree.xpath(f'.//PackageReference[@Include="{component_name}"][@Version="{current_version}"]',
-                           namespaces=namespaces)
+                       namespaces=namespaces)
     if myval is not None:
         myval[0].attrib['Version'] = upgrade_version
     # tree = ET.parse(package_file)
@@ -159,7 +159,10 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
         if not create_csproj(test_upgrade_list):
             return None
 
-        pvurl, projname, vername, retval = bu.run_detect(detect_jar, detect_connection_opts, False)
+        output = False
+        if globals.debug > 0:
+            output = True
+        pvurl, projname, vername, retval = bu.run_detect(detect_jar, detect_connection_opts, output)
 
         if retval == 3:
             # Policy violation returned

@@ -102,15 +102,11 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
                         max_vuln_severity = vuln['overallScore']
 
                     desc = vuln['description'].replace('\n', ' ')[:200]
-                    # vulns.append({
-                    #     "compid": childid,
-                    #     "name": vuln['name'],
-                    #     "desc": desc,
-                    #     "severity": vuln['vulnSeverity'],
-                    #     "policy": vuln['violatingPolicies'][0]['policyName']
-                    # })
-                    # | Parent | Component | Vulnerability | Severity |  Policy | Description | Current Ver |
-                    vulnname = f"[{vuln['name']}]({globals.args.url}/api/vulnerabilities/{vuln['name']}/overview)"
+                    if len(desc) > 200:
+                        desc += ' ...'
+                    name = f"{vuln['name']}"
+                    link = f"{globals.args.url}/api/vulnerabilities/{name}/overview"
+                    vulnname = f'<a href="{link}" target="_blank">{name}</a>'
 
                     cvulns_list.append(
                         [
@@ -125,11 +121,14 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
                     )
                 break
 
+        # Sort the table
         cvulns_list = sorted(cvulns_list, key=itemgetter(3), reverse=True)
 
+        # add colours to vuln scores
         cvulns_table = []
         for crow in cvulns_list:
             vscore = vuln_color(crow[3])
+            # | Parent | Component | Vulnerability | Severity |  Policy | Description | Current Ver |
             cvulns_table.append(f"| {crow[0]} | {crow[1]} | {crow[2]} | {vscore} | {crow[4]} | {crow[5]} | {crow[6]} |")
 
         return existing_vulns, vuln_count, max_vuln_severity, cvulns_table
@@ -443,22 +442,28 @@ def main_process(output, runargs):
     globals.github_sha = os.getenv("GITHUB_SHA")
 
     # Optionally generate Fix PR
-    if globals.args.fix_pr and len(globals.fix_pr_data.values()) > 0:
-        if github_workflow.github_fix_pr():
-            github_workflow.github_set_commit_status(True)
-            print('BD-Scan-Action: Created fix pull request')
+    if globals.args.fix_pr:
+        if len(globals.fix_pr_data.values()) > 0:
+            if github_workflow.github_fix_pr():
+                github_workflow.github_set_commit_status(True)
+                print('BD-Scan-Action: Created fix pull request')
+            else:
+                print('ERROR: Unable to create fix pull request')
+                sys.exit(1)
         else:
-            print('ERROR: Unable to create fix pull request')
-            sys.exit(1)
+            print('BD-Scan-Action: No ugrades available for Fix PR - skipping')
 
     # Optionally comment on the pull request this is for
-    if globals.args.comment_on_pr and len(globals.comment_on_pr_comments) > 0:
-        if github_workflow.github_pr_comment():
-            github_workflow.github_set_commit_status(True)
-            print('BD-Scan-Action: Created comment on existing pull request')
+    if globals.args.comment_on_pr:
+        if len(globals.comment_on_pr_comments) > 0:
+            if github_workflow.github_pr_comment():
+                github_workflow.github_set_commit_status(True)
+                print('BD-Scan-Action: Created comment on existing pull request')
+            else:
+                print('ERROR: Unable to create comment on existing pull request')
+                sys.exit(1)
         else:
-            print('ERROR: Unable to create comment on existing pull request')
-            sys.exit(1)
+            print('BD-Scan-Action: No ugrades available for Comment on PR - skipping')
 
     print('Done - SUCCESS')
     sys.exit(0)

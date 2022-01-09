@@ -119,7 +119,8 @@ def main():
     else:
         globals.args.upgrade_indirect = False
 
-    if globals.args.debug is not None:
+    globals.debug = 0
+    if globals.args.debug is not None and globals.args.debug != '':
         globals.debug = int(globals.args.debug)
 
     runargs.extend(["--blackduck.url=" + globals.args.url,

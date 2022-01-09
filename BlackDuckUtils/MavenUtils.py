@@ -1,7 +1,7 @@
 import os
 import re
 # import shutil
-from BlackDuckUtils import globals
+from bdscan import globals
 # import sys
 import tempfile
 # import json
@@ -161,7 +161,10 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
         if not create_pom(test_upgrade_list):
             return None
 
-        pvurl, projname, vername, retval = bu.run_detect(detect_jar, detect_connection_opts, False)
+        output = False
+        if globals.debug > 0:
+            output = True
+        pvurl, projname, vername, retval = bu.run_detect(detect_jar, detect_connection_opts, output)
 
         if retval == 3:
             # Policy violation returned

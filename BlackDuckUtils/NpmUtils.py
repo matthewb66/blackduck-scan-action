@@ -6,6 +6,7 @@ import tempfile
 # import json
 
 from BlackDuckUtils import Utils as bu
+from bdscan import globals
 # from BlackDuckUtils import BlackDuckOutput as bo
 
 
@@ -107,7 +108,10 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
             continue
         print(f'BD-Scan-Action: Cycle {ind + 1} - Validating {len(installed_packages)} potential upgrades')
 
-        pvurl, projname, vername, retval = bu.run_detect(detect_jar, detect_connection_opts, False)
+        output = False
+        if globals.debug > 0:
+            output = True
+        pvurl, projname, vername, retval = bu.run_detect(detect_jar, detect_connection_opts, output)
 
         if retval == 3:
             # Policy violation returned
