@@ -58,7 +58,7 @@ inputs:
 runs:
   using: "docker"
 #  image: "Dockerfile"
-  image: "docker://ghcr.io/matthewb66/bdghscan:v1"
+  image: "docker://ghcr.io/matthewb66/bdghscan:v2"
   args:
     - --debug
     - ${{ inputs.debug }}
