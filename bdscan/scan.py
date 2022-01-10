@@ -218,33 +218,25 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
         )
 
         if dir_vuln_count > 0 and children_num_vulns > 0:
-            stext = f"## {comp_name}/{comp_version}\n" \
-                    f"The direct dependency {comp_name}/{comp_version} has {dir_vuln_count} vulnerabilities (max " \
-                    f"score {dir_max_sev}) and {children_num_vulns} vulnerabilities in child dependencies (max score " \
-                    f"{children_max_sev})."
-            ctext = f"The direct dependency {comp_name}/{comp_version} has {dir_vuln_count} vulnerabilities (max " \
-                    f"score {dir_max_sev}) and {children_num_vulns} vulnerabilities in child dependencies (max score " \
-                    f"{children_max_sev}).\n\nList of direct and indirect vulnerabilities:\n{','.join(dir_vulns)}"
-            ltext = stext + "\n\n" + '\n'.join(md_comp_vulns_table) + '\n'
+            shorttext = f"The direct dependency {comp_name}/{comp_version} has {dir_vuln_count} vulnerabilities (max " \
+                        f"score {dir_max_sev}) and {children_num_vulns} vulnerabilities in child dependencies (max " \
+                        f"score {children_max_sev})."
+            longtext_md = shorttext + "\n\n" + '\n'.join(md_comp_vulns_table) + '\n'
+            longtext = f"{shorttext}\n\nList of direct and indirect vulnerabilities:\n{','.join(dir_vulns)}"
         elif dir_vuln_count > 0 and children_num_vulns == 0:
-            stext = f"## {comp_name}/{comp_version}\n" \
-                    f"The direct dependency {comp_name}/{comp_version} has {dir_vuln_count} vulnerabilities (max " \
-                    f"score {dir_max_sev})."
-            ctext = f"The direct dependency {comp_name}/{comp_version} has {dir_vuln_count} vulnerabilities (max " \
-                    f"score {dir_max_sev}).\n\nList of direct vulnerabilities:\n{','.join(dir_vulns)}"
-            ltext = stext + "\n\n" + '\n'.join(md_comp_vulns_table) + '\n'
+            shorttext = f"The direct dependency {comp_name}/{comp_version} has {dir_vuln_count} vulnerabilities (max " \
+                        f"score {dir_max_sev})."
+            longtext_md = shorttext + "\n\n" + '\n'.join(md_comp_vulns_table) + '\n'
+            longtext = f"{shorttext}\n\nList of direct vulnerabilities:\n{','.join(dir_vulns)}"
         elif children_num_vulns > 0:
-            stext = f"## {comp_name}/{comp_version}\n" \
-                    f"The direct dependency {comp_name}/{comp_version} has {children_num_vulns} vulnerabilities in " \
-                    f"child dependencies (max score {children_max_sev})."
-            ctext = f"The direct dependency {comp_name}/{comp_version} has {children_num_vulns} vulnerabilities in " \
-                    f"child dependencies (max score {children_max_sev})\n\n" \
-                    f"List of indirect vulnerabilities:\n{','.join(dir_vulns)}."
-            ltext = stext + "\n\n" + '\n'.join(md_comp_vulns_table) + '\n'
+            shorttext = f"The direct dependency {comp_name}/{comp_version} has {children_num_vulns} vulnerabilities " \
+                        f"in child dependencies (max score {children_max_sev})."
+            longtext_md = shorttext + "\n\n" + '\n'.join(md_comp_vulns_table) + '\n'
+            longtext = f"{shorttext}\n\nList of indirect vulnerabilities:\n{','.join(dir_vulns)}"
         else:
-            stext = ''
-            ctext = ''
-            ltext = ''
+            shorttext = ''
+            longtext_md = ''
+            longtext = ''
 
         fix_pr_node = dict()
         if upgrade_ver is not None:
@@ -254,17 +246,17 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
                 'versionTo': upgrade_ver,
                 'ns': comp_ns,
                 'filename': bu.remove_cwd_from_filename(package_file),
-                'comments': [stext],
-                'comments_markdown': [ltext],
+                'comments': [f"## {comp_name}/{comp_version}\n{shorttext}"],
+                'comments_markdown': [longtext_md],
                 'comments_markdown_footer': ''
             }
 
-        globals.comment_on_pr_comments.append(ltext)
+        globals.comment_on_pr_comments.append(f"## {comp_name}/{comp_version}\n{longtext_md}")
 
         result = {
             'ruleId': comp_name,
             'message': {
-                'text': stext
+                'text': shorttext
             },
             'locations': [
                 {
@@ -292,17 +284,17 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
             level = "note"
 
         if upgrade_ver is not None:
-            uhelp = f"Recommended to upgrade to version {upgrade_ver}.\n\n"
+            uhelp = f"{longtext_md}\n\nRecommended to upgrade to version {upgrade_ver}.\n\n"
         else:
-            uhelp = f"No upgrade available at this time.\n\n"
+            uhelp = f"{longtext_md}\n\nNo upgrade available at this time.\n\n"
 
         tool_rule = {
             'id': comp_name,
             'shortDescription': {
-                'text': ctext,
+                'text': shorttext,
             },
             'fullDescription': {
-                'text': ctext,
+                'text': longtext,
             },
             'help': {
                 'text': '',
@@ -416,12 +408,20 @@ def main_process(output, runargs):
                                                                             globals.args.trustcert)
 
         # Work out possible upgrades
-        print('BD-Scan-Action: Identifying upgrades ...')
+        globals.printdebug('BD-Scan-Action: Identifying upgrades ...')
         upgrade_dict = {}
+        globals.printdebug('DEBUG: DIRECT DEPS TO UPGRADE')
+        globals.printdebug(json.dumps(direct_deps_to_upgrade, indent=4))
+        globals.printdebug('DEBUG: VERSION DICT')
+        globals.printdebug(json.dumps(version_dict, indent=4))
+        globals.printdebug('DEBUG: GUIDANCE DICT')
+        globals.printdebug(json.dumps(guidance_dict, indent=4))
         for dep in direct_deps_to_upgrade:
+            globals.printdebug(f'DEBUG: Checking {dep}')
             if dep in version_dict.keys() and dep in guidance_dict.keys():
                 upgrade_dict[dep] = bu.find_upgrade_versions(dep, version_dict[dep], origin_dict, guidance_dict[dep],
                                                              globals.args.upgrade_major)
+                globals.printdebug(f'DEBUG: find_upgrade_versions() returned {upgrade_dict[dep]}')
 
         # Test upgrades using Detect Rapid scans
         good_upgrades = test_upgrades(upgrade_dict, direct_deps_to_upgrade, pm)
@@ -438,8 +438,10 @@ def main_process(output, runargs):
     globals.github_token = os.getenv("GITHUB_TOKEN")
     globals.github_repo = os.getenv("GITHUB_REPOSITORY")
     globals.github_ref = os.getenv("GITHUB_REF")
+    globals.printdebug(f'GITHUB_REF={globals.github_ref}')
     globals.github_api_url = os.getenv("GITHUB_API_URL")
     globals.github_sha = os.getenv("GITHUB_SHA")
+    globals.printdebug(f'GITHUB_SHA={globals.github_sha}')
 
     # Optionally generate Fix PR
     if globals.args.fix_pr:

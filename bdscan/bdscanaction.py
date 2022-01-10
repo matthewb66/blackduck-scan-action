@@ -34,19 +34,12 @@ def main():
 
     globals.args = parser.parse_args()
 
-    print(f'BD-Scan-Action: Start\n\n--- BD-SCAN-ACTION CONFIGURATION (version {globals.scan_utility_version } -------')
-
     if globals.args.url is None or globals.args.url == '':
         globals.args.url = os.getenv("BLACKDUCK_URL")
     if globals.args.token is None or globals.args.token == '':
         globals.args.token = os.getenv("BLACKDUCK_API_TOKEN")
 
-    if globals.args.url is None or globals.args.token is None:
-        print(f"BD-Scan-Action: ERROR: Must specify Black Duck Hub URL and API Token")
-        sys.exit(1)
-
-    print(f'- BD URL {globals.args.url}')
-    print(f'- BD Token *************')
+    print(f'BD-Scan-Action: Start\n\n--- BD-SCAN-ACTION CONFIGURATION (version {globals.scan_utility_version}) -------')
     if globals.args.trustcert is None or globals.args.trustcert == '':
         globals.args.trustcert = False
     elif str(globals.args.trustcert).lower() == 'true':
@@ -61,25 +54,11 @@ def main():
         else:
             globals.args.trustcert = True
 
-    runargs = []
-    if globals.args.trustcert:
-        runargs.append("--blackduck.trust.cert=true")
-        print('- Trust BD server certificate')
-
-    if globals.args.mode is None or globals.args.mode == '':
-        globals.args.mode = 'rapid'
-    elif str(globals.args.mode).lower() == 'full' or str(globals.args.mode).lower() == 'intelligent':
-        globals.args.mode = 'intelligent'
-        print('- Run intelligent (full) scan')
-    else:
-        globals.args.mode = 'rapid'
-        print('- Run Rapid scan')
-
     if globals.args.fix_pr is None or str(globals.args.fix_pr).lower() == 'false' or globals.args.fix_pr == '':
         globals.args.fix_pr = False
     elif str(globals.args.fix_pr).lower() == 'true':
         globals.args.fix_pr = True
-        print('- CREATE FIX PR')
+        print('  --fix_pr:              CREATE FIX PR')
     else:
         globals.args.fix_pr = False
 
@@ -88,16 +67,37 @@ def main():
         globals.args.comment_on_pr = False
     elif str(globals.args.comment_on_pr).lower() == 'true':
         globals.args.comment_on_pr = True
-        print('- ADD COMMENT TO EXISTING PR')
+        print('  --comment_on_pr:       ADD COMMENT TO EXISTING PR')
     else:
         globals.args.comment_on_pr = False
+
+    if globals.args.sarif is not None and globals.args.sarif != '':
+        print(f"  --comment_on_pr:      OUTPUT GH SARIF TO '{globals.args.sarif}'")
+    else:
+        globals.args.sarif = None
+
+    print(f'  --url:                 BD URL {globals.args.url}')
+    print(f'  --token:               BD Token *************')
+    runargs = []
+    if globals.args.trustcert:
+        runargs.append("--blackduck.trust.cert=true")
+        print('  --trustcert:           Trust BD server certificate')
+
+    if globals.args.mode is None or globals.args.mode == '':
+        globals.args.mode = 'rapid'
+    elif str(globals.args.mode).lower() == 'full' or str(globals.args.mode).lower() == 'intelligent':
+        globals.args.mode = 'intelligent'
+        print('  --mode:                Run intelligent (full) scan')
+    else:
+        globals.args.mode = 'rapid'
+        print('  --mode:                Run Rapid scan')
 
     if globals.args.upgrade_major is None or globals.args.upgrade_major == 'false' or \
             globals.args.upgrade_major == '':
         globals.args.upgrade_major = False
     elif str(globals.args.upgrade_major).lower() == 'true':
         globals.args.upgrade_major = True
-        print('- Allow major version upgrades')
+        print('  --upgrade_major:       Allow major version upgrades')
     else:
         globals.args.upgrade_major = False
 
@@ -106,7 +106,7 @@ def main():
         globals.args.incremental_results = False
     elif str(globals.args.incremental_results).lower() == 'true':
         globals.args.incremental_results = True
-        print('- Calculate incremental results (since last full/intelligent scan')
+        print('  --incremental_results: Calculate incremental results (since last full/intelligent scan')
     else:
         globals.args.incremental_results = False
 
@@ -114,7 +114,7 @@ def main():
             globals.args.upgrade_indirect == '':
         globals.args.upgrade_indirect = False
     elif str(globals.args.upgrade_indirect).lower() == 'true':
-        print('- Calculate upgrades for direct dependencies to address indirect vulnerabilities')
+        print('  --upgrade_indirect:    Calculate upgrades for direct dependencies to address indirect vulnerabilities')
         globals.args.upgrade_indirect = True
     else:
         globals.args.upgrade_indirect = False
@@ -133,27 +133,30 @@ def main():
 
     if globals.args.project is not None and globals.args.project != '':
         runargs.append("--detect.project.name=" + globals.args.project)
-        print(f"- BD project name '{globals.args.project}'")
+        print(f"  --project:            BD project name '{globals.args.project}'")
 
     if globals.args.version is not None and globals.args.version != '':
         runargs.append("--detect.project.version.name=" + globals.args.version)
-        print(f"- BD project version name '{globals.args.version}'")
+        print(f"  --version:            BD project version name '{globals.args.version}'")
 
     if globals.args.detect_opts is not None and globals.args.detect_opts != '':
         for opt in str(globals.args.detect_opts).split(','):
             newopt = f"--{opt}"
-            print(f"- Add option to Detect scan {newopt}")
+            print(f"  --detect_opts:    Add option to Detect scan {newopt}")
             runargs.append(newopt)
 
-    if globals.args.sarif is not None and globals.args.sarif != '':
-        print(f"- OUTPUT GH SARIF TO '{globals.args.sarif}'")
-    else:
-        globals.args.sarif = None
-
     print('-------------------------------------------------------------------------\n')
+    if globals.args.url is None or globals.args.token is None:
+        print(f"BD-Scan-Action: ERROR: Must specify Black Duck Hub URL and API Token")
+        sys.exit(1)
+
     if globals.args.sarif is None and not globals.args.comment_on_pr and not globals.args.fix_pr and \
             globals.args.mode == 'rapid':
         print("BD-Scan-Action: Nothing to do - specify at least 1 option from 'sarif, comment_on_pr, fix_pr'")
+        sys.exit(1)
+
+    if globals.args.fix_pr and globals.args.comment_on_pr:
+        print("BD-Scan-Action: Cannot specify BOTH fix_pr and comment_on_pr - Exiting")
         sys.exit(1)
 
     print(f"BD-Scan-Action: INFO: Running Black Duck detect with the following options: {runargs}")

@@ -1,6 +1,6 @@
 import aiohttp
 import asyncio
-from BlackDuckUtils import globals
+from bdscan import globals
 from BlackDuckUtils import Utils as bu
 
 
@@ -22,6 +22,7 @@ async def async_main(compidlist, bd, trustcert):
         # print(f'compidlist: {compidlist}')
         all_compdata = dict(await asyncio.gather(*compdata_tasks))
         await asyncio.sleep(0.25)
+        globals.printdebug(f'got {len(all_compdata.keys())} all_compdata')
 
     async with aiohttp.ClientSession() as session:
         upgradeguidance_tasks = []
@@ -39,6 +40,8 @@ async def async_main(compidlist, bd, trustcert):
         all_upgradeguidances = dict(await asyncio.gather(*upgradeguidance_tasks))
         all_versions = dict(await asyncio.gather(*versions_tasks))
         await asyncio.sleep(0.25)
+        globals.printdebug(f'got {len(all_upgradeguidances.keys())} all_upgradeguidances')
+        globals.printdebug(f'got {len(all_versions.keys())} all_versions')
 
     async with aiohttp.ClientSession() as session:
         origins_tasks = []
@@ -82,6 +85,7 @@ async def async_main(compidlist, bd, trustcert):
         print('BD-Scan-Action: Getting version origin data ... ')
         all_origins = dict(await asyncio.gather(*origins_tasks))
         await asyncio.sleep(0.25)
+        globals.printdebug(f'got {len(all_origins.keys())} all_origins')
 
     # return all_upgradeguidances, all_versions
     return all_upgradeguidances, reduced_version_list, all_origins

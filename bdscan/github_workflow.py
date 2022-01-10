@@ -111,7 +111,7 @@ def github_fix_pr():
                            f"'{fix_pr_node['versionTo']}'")
 
         pull_request_title = f"Black Duck: Upgrade {fix_pr_node['componentName']} to version " \
-                             f"{fix_pr_node['versionTo']} fix known security vulerabilities"
+                             f"{fix_pr_node['versionTo']} to fix known security vulnerabilities"
         if pull_request_title in pulls:
             globals.printdebug(f"DEBUG: Skipping pull request for {fix_pr_node['componentName']}' version "
                                f"'{fix_pr_node['versionFrom']} as it is already present")
@@ -168,7 +168,7 @@ def github_pr_comment():
     globals.printdebug(ref)
 
     pull_number_for_sha = None
-    m = re.search('pull/(.+?)/', globals.github_ref)
+    m = re.search('pull\/\(.+?\)\/', globals.github_ref)
     if m:
         pull_number_for_sha = int(m.group(1))
 
@@ -197,7 +197,7 @@ def github_pr_comment():
     #
     # for comment in globals.comment_on_pr_comments:
     #     comments_markdown.append(comment)
-    comments_markdown = "# Synopsys Black Duck XXXX" + "\n".join(globals.comment_on_pr_comments)
+    comments_markdown = "# Synopsys Black Duck" + "\n".join(globals.comment_on_pr_comments)
 
     if len(comments_markdown) > 65535:
         comments_markdown = comments_markdown[:65535]

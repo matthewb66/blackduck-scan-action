@@ -1,9 +1,9 @@
 import os
 import re
-# import shutil
+import shutil
 
 import tempfile
-# import json
+import json
 
 from BlackDuckUtils import Utils as bu
 from bdscan import globals
@@ -37,6 +37,7 @@ def upgrade_npm_dependency(package_file, component_name, current_version, compon
 
     origdir = os.getcwd()
     os.chdir(dirname)
+    print(f'DEBUG: upgrade_npm_dependency() - working in folder {os.getcwd()}')
 
     cmd = "npm install " + component_name + "@" + component_version
     print(f"BD-Scan-Action: INFO: Executing NPM to update component: {cmd}")
@@ -59,13 +60,17 @@ def upgrade_npm_dependency(package_file, component_name, current_version, compon
 
 def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connection_opts, bd,
                              upgrade_indirect, upgrade_major):
+    if shutil.which("npm") is None:
+        print('BD-Scan-Action: ERROR: Unable to find npm executable to install packages - unable to test upgrades')
+        return {}
+
     # Need to test the short & long term upgrade guidance separately
     detect_connection_opts.append("--detect.blackduck.scan.mode=RAPID")
     detect_connection_opts.append("--detect.output.path=upgrade-tests")
     detect_connection_opts.append("--detect.cleanup=false")
 
-    # print('POSSIBLE UPGRADES:')
-    # print(json.dumps(upgrade_dict, indent=4))
+    globals.printdebug('POSSIBLE UPGRADES:')
+    globals.printdebug(json.dumps(upgrade_dict, indent=4))
 
     # vulnerable_upgrade_list = []
     test_dirdeps = deps_list
@@ -84,16 +89,19 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
             # comp = arr[1]
             # ver = arr[2]
             dstring = f'{forge}:{comp}/{ver}'
+            globals.printdebug(f'Working on component {dstring}')
             if dstring not in upgrade_dict.keys() or len(upgrade_dict[dstring]) <= ind:
-                # print(f'No Upgrade {ind} available for {dstring}')
+                globals.printdebug(f'No Upgrade {ind} available for {dstring}')
                 continue
 
             upgrade_version = upgrade_dict[dstring][ind]
             if upgrade_version == '':
+                globals.printdebug(f'Could not get upgrade version fro upgrade_dict[{dstring}][{ind}]')
                 continue
             # print(f'DEBUG: Upgrade dep = {comp}@{version}')
 
-            cmd = f"npm install {comp}@{upgrade_version} --package-lock-only >/dev/null 2>&1"
+            # cmd = f"npm install {comp}@{upgrade_version} --package-lock-only >/dev/null 2>&1"
+            cmd = f"npm install {comp}@{upgrade_version} --package-lock-only"
             # print(cmd)
             ret = os.system(cmd)
 
@@ -101,6 +109,7 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
                 installed_packages.append([comp, upgrade_version])
                 orig_deps_processed.append(dep)
             else:
+                globals.printdebug(f'npm install for {comp}@{upgrade_version} returned error')
                 last_vulnerable_dirdeps.append(f"npmjs:{comp}/{upgrade_version}")
 
         if len(installed_packages) == 0:

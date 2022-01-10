@@ -4,7 +4,7 @@ import glob
 import json
 import os
 import sys
-from BlackDuckUtils import globals
+from bdscan import globals
 
 from BlackDuckUtils import Utils as bu
 from BlackDuckUtils import NpmUtils

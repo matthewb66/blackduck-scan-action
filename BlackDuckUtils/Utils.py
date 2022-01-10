@@ -1,7 +1,7 @@
 import json
 import os
 import sys
-from BlackDuckUtils import globals
+from bdscan import globals
 import requests
 import semver
 import tempfile

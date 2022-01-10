@@ -1,6 +1,6 @@
 name: "Black Duck Scan"
 description: "Black Duck Scanning for GitHub CI/CD Workflows"
-author: "James Croall"
+author: "Matthew Brady"
 branding:
   icon: "alert-triangle"
   color: "yellow"
@@ -8,6 +8,7 @@ inputs:
   debug:
     description: "Debugging"
     default: "0"
+    required: false
   url:
     description: "Black Duck URL"
     required: true

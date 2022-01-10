@@ -10,6 +10,9 @@ RUN apt-get install -y python3-pip
 # Install bdscanaction
 RUN pip3 install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple blackduck-scan-action
 
+# Install npm
+RUN apt install -y npm
+
 # Install Java
 RUN apt install -y openjdk-8-jre-headless curl
 
