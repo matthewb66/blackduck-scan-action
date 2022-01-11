@@ -56,6 +56,15 @@ version '{project_baseline_version}' - will not present incremental results")
     return rapid_scan_data, dep_dict, direct_deps_to_upgrade, pm
 
 
+def unique(list1):
+    unique_list = []
+    for x in list1:
+        # check if exists in unique_list or not
+        if x not in unique_list:
+            unique_list.append(x)
+    return unique_list
+
+
 def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_upgrade):
     def vuln_color(value):
         if value > 9:
@@ -154,7 +163,7 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
     md_all_vulns_table = md_vulns_header[:]
 
     # for item in rapid_scan_data['items']:
-    for compid in direct_deps_to_upgrade:
+    for compid in direct_deps_to_upgrade.keys():
         # compid = item['componentIdentifier']
 
         comp_ns, comp_name, comp_version = bu.parse_component_id(compid)
@@ -164,7 +173,17 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
         else:
             upgrade_ver = None
 
-        package_file, package_line = bu.detect_package_file(globals.detected_package_files, compid)
+        # If package file for this direct dep is blank, find from the detect-returned package files
+        pkgfiles = []
+        pkglines = []
+        for projfile in unique(direct_deps_to_upgrade[compid]['projfiles']):
+            if projfile == '':
+                package_file, package_line = bu.detect_package_file(globals.detected_package_files, compid)
+            else:
+                package_file, package_line = bu.detect_package_file(projfile, compid)
+            if package_file != 'Unknown' and package_line > 0:
+                pkgfiles.append(package_file)
+                pkglines.append(package_line)
 
         children = []
         for alldep in dep_dict.keys():
@@ -246,7 +265,7 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
                 'versionTo': upgrade_ver,
                 'ns': comp_ns,
                 'filename': bu.remove_cwd_from_filename(package_file),
-                'comments': [f"## {comp_name}/{comp_version}\n{shorttext}"],
+                'comments': [f"## Dependency {comp_name}/{comp_version}\n{shorttext}"],
                 'comments_markdown': [longtext_md],
                 'comments_markdown_footer': ''
             }
@@ -416,7 +435,7 @@ def main_process(output, runargs):
         globals.printdebug(json.dumps(version_dict, indent=4))
         globals.printdebug('DEBUG: GUIDANCE DICT')
         globals.printdebug(json.dumps(guidance_dict, indent=4))
-        for dep in direct_deps_to_upgrade:
+        for dep in direct_deps_to_upgrade.keys():
             globals.printdebug(f'DEBUG: Checking {dep}')
             if dep in version_dict.keys() and dep in guidance_dict.keys():
                 upgrade_dict[dep] = bu.find_upgrade_versions(dep, version_dict[dep], origin_dict, guidance_dict[dep],
@@ -424,7 +443,7 @@ def main_process(output, runargs):
                 globals.printdebug(f'DEBUG: find_upgrade_versions() returned {upgrade_dict[dep]}')
 
         # Test upgrades using Detect Rapid scans
-        good_upgrades = test_upgrades(upgrade_dict, direct_deps_to_upgrade, pm)
+        good_upgrades = test_upgrades(upgrade_dict, direct_deps_to_upgrade.keys(), pm)
     else:
         good_upgrades = {}
 

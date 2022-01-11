@@ -127,7 +127,7 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
             rapid_scan_data, dep_dict, direct_deps_vuln, pm = bu.process_scan('upgrade-tests', bd, [], False, False)
 
             # print(f'MYDEBUG: Vuln direct deps = {direct_deps_vuln}')
-            for vulndep in direct_deps_vuln:
+            for vulndep in direct_deps_vuln.keys():
                 arr = vulndep.replace('/', ':').split(':')
                 compname = arr[1]
                 #

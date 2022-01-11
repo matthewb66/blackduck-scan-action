@@ -156,7 +156,7 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
         if len(test_upgrade_list) == 0:
             # print('No upgrades to test')
             continue
-        print(f'BD-Scan-Action: Cycle {ind + 1} - Validating {len(test_dirdeps)} potential upgrades')
+        print(f'BD-Scan-Action: Cycle {ind + 1} - Validating {len(test_upgrade_list)} potential upgrades')
 
         if not create_pom(test_upgrade_list):
             return None

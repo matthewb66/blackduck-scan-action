@@ -5,7 +5,15 @@ from BlackDuckUtils import Utils as bu
 
 
 def get_data_async(dirdeps, bd, trustcert):
-    return asyncio.run(async_main(dirdeps, bd, trustcert))
+    def unique(list1):
+        unique_list = []
+        for x in list1:
+            # check if exists in unique_list or not
+            if x not in unique_list:
+                unique_list.append(x)
+        return unique_list
+
+    return asyncio.run(async_main(unique(dirdeps.keys()), bd, trustcert))
 
 
 async def async_main(compidlist, bd, trustcert):

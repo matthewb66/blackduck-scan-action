@@ -154,7 +154,7 @@ def detect_package_file(detected_package_files, componentid):
         if line > 0:
             return remove_cwd_from_filename(package_file), line
 
-    return "Unknown", 1
+    return "Unknown", 0
 
 
 def get_comps(bd, pv):
