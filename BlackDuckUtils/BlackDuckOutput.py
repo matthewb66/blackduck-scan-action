@@ -95,10 +95,11 @@ def process_rapid_scan(rapid_scan_data, incremental, baseline_comp_cache, bdio_g
         return ''
 
     def get_projfile_maven(folder, allpoms):
-        if not os.path.isdir(folder):
-            return ''
+        # if not os.path.isdir(folder):
+        #     return ''
         for pom in allpoms:
-            if os.path.dirname(pom) == folder:
+            finalfolder = os.path.dirname(pom).split(os.)[-1]
+            if finalfolder == folder:
                 return pom
         return ''
 

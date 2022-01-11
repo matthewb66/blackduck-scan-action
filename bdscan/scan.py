@@ -443,7 +443,7 @@ def main_process(output, runargs):
                 globals.printdebug(f'DEBUG: find_upgrade_versions() returned {upgrade_dict[dep]}')
 
         # Test upgrades using Detect Rapid scans
-        good_upgrades = test_upgrades(upgrade_dict, direct_deps_to_upgrade.keys(), pm)
+        good_upgrades = test_upgrades(upgrade_dict, list(direct_deps_to_upgrade.keys()), pm)
     else:
         good_upgrades = {}
 

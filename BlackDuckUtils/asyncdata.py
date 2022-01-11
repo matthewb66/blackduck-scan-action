@@ -13,7 +13,7 @@ def get_data_async(dirdeps, bd, trustcert):
                 unique_list.append(x)
         return unique_list
 
-    return asyncio.run(async_main(unique(dirdeps.keys()), bd, trustcert))
+    return asyncio.run(async_main(unique(list(dirdeps.keys())), bd, trustcert))
 
 
 async def async_main(compidlist, bd, trustcert):

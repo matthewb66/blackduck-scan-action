@@ -185,7 +185,7 @@ def get_projver(bd, projname, vername):
         for ver in versions:
             if ver['versionName'] == vername:
                 return ver['_meta']['href']
-    print("BD-Scan-Action: ERROR: Version '{}' does not exist in project '{}'".format(projname, vername))
+    print(f"BD-Scan-Action: WARN: Version '{vername}' does not exist in project '{projname}'")
     return ''
 
 
