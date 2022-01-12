@@ -211,3 +211,20 @@ def normalise_dep(dep):
     if dep.find('http:') == 0:
         dep = dep.replace('http:', '')
     return dep.replace('/', ':')
+
+
+def find_allpomfiles():
+    import glob
+    return glob.glob('**/pom.xml', recursive=True)
+
+
+def find_projfile(folder, allpoms):
+    foundpom = ''
+    for pom in allpoms:
+        arr = pom.split(os.path.sep)
+        if len(arr) >= 2 and arr[-2] == folder:
+
+            break
+
+
+    return ''
