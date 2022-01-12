@@ -36,44 +36,44 @@ def convert_to_bdio(component_id):
     return bdio_name
 
 
-def upgrade_maven_dependency(package_file, component_name, current_version, component_version):
+def upgrade_maven_dependency(package_files, component_name, current_version, component_version):
     # Key will be actual name, value will be local filename
-    if package_file == 'Unknown':
-        return None
     files_to_patch = dict()
 
     # dirname = tempfile.TemporaryDirectory()
-    dirname = tempfile.mkdtemp(prefix="snps-patch-" + component_name + "-" + component_version)
+    tempdirname = tempfile.mkdtemp(prefix="snps-patch-" + component_name + "-" + component_version)
 
-    parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
+    for package_file in package_files:
+        dir = os.path.sep.join(package_file.split(os.path.sep)[:-1])
+        # ToDo: Create pom file in sub-folder
+        parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
 
-    ET.register_namespace('', "http://maven.apache.org/POM/4.0.0")
-    ET.register_namespace('xsi', "http://www.w3.org/2001/XMLSchema-instance")
+        ET.register_namespace('', "http://maven.apache.org/POM/4.0.0")
+        ET.register_namespace('xsi', "http://www.w3.org/2001/XMLSchema-instance")
 
-    tree = ET.parse(package_file, parser=ET.XMLParser(target=MyTreeBuilder()))
-    root = tree.getroot()
+        tree = ET.parse(package_file, parser=ET.XMLParser(target=MyTreeBuilder()))
+        root = tree.getroot()
 
-    nsmap = {'m': 'http://maven.apache.org/POM/4.0.0'}
+        nsmap = {'m': 'http://maven.apache.org/POM/4.0.0'}
 
-    # globals.printdebug(f"DEBUG: Search for maven dependency {component_name}@{component_version}")
+        # globals.printdebug(f"DEBUG: Search for maven dependency {component_name}@{component_version}")
 
-    for dep in root.findall('.//m:dependencies/m:dependency', nsmap):
-        groupId = dep.find('m:groupId', nsmap).text
-        artifactId = dep.find('m:artifactId', nsmap).text
-        version = dep.find('m:version', nsmap).text
+        for dep in root.findall('.//m:dependencies/m:dependency', nsmap):
+            groupId = dep.find('m:groupId', nsmap).text
+            artifactId = dep.find('m:artifactId', nsmap).text
+            version = dep.find('m:version', nsmap).text
 
-        # TODO Also include organization name?
-        if artifactId == component_name:
-            globals.printdebug(f"DEBUG:   Found GroupId={groupId} ArtifactId={artifactId} Version={version}")
-            dep.find('m:version', nsmap).text = component_version
+            if artifactId == component_name:
+                globals.printdebug(f"DEBUG:   Found GroupId={groupId} ArtifactId={artifactId} Version={version}")
+                dep.find('m:version', nsmap).text = component_version
 
-    xmlstr = ET.tostring(root, encoding='utf8', method='xml')
-    with open(dirname + "/" + package_file, "wb") as fp:
-        fp.write(xmlstr)
+        xmlstr = ET.tostring(root, encoding='utf8', method='xml')
+        with open(tempdirname + "/" + package_file, "wb") as fp:
+            fp.write(xmlstr)
 
-    print(f"BD-Scan-Action: INFO: Updated Maven component in: {package_file}")
+        print(f"BD-Scan-Action: INFO: Updated Maven component in: {package_file}")
 
-    files_to_patch[package_file] = dirname + "/" + package_file
+        files_to_patch[package_file] = tempdirname + "/" + package_file
 
     return files_to_patch
 

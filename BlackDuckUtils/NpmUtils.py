@@ -25,35 +25,35 @@ def convert_dep_to_bdio(component_id):
     return bdio_name
 
 
-def upgrade_npm_dependency(package_file, component_name, current_version, component_version):
+def upgrade_npm_dependency(package_files, component_name, current_version, component_version):
     # Key will be actual name, value will be local filename
-    if package_file == 'Unknown':
-        return None
 
     files_to_patch = dict()
 
-    # dirname = tempfile.TemporaryDirectory()
-    dirname = tempfile.mkdtemp(prefix="snps-patch-" + component_name + "-" + component_version)
+    for package_file in package_files:
+        # Todo: Work on sub-folders
+        # dirname = tempfile.TemporaryDirectory()
+        dirname = tempfile.mkdtemp(prefix="snps-patch-" + component_name + "-" + component_version)
 
-    origdir = os.getcwd()
-    os.chdir(dirname)
-    print(f'DEBUG: upgrade_npm_dependency() - working in folder {os.getcwd()}')
+        origdir = os.getcwd()
+        os.chdir(dirname)
+        print(f'DEBUG: upgrade_npm_dependency() - working in folder {os.getcwd()}')
 
-    cmd = "npm install " + component_name + "@" + component_version
-    print(f"BD-Scan-Action: INFO: Executing NPM to update component: {cmd}")
-    err = os.system(cmd)
-    if err > 0:
-        print(f"BD-Scan-Action: ERROR: Error {err} executing NPM command")
+        cmd = "npm install " + component_name + "@" + component_version
+        print(f"BD-Scan-Action: INFO: Executing NPM to update component: {cmd}")
+        err = os.system(cmd)
+        if err > 0:
+            print(f"BD-Scan-Action: ERROR: Error {err} executing NPM command")
+            os.chdir(origdir)
+            dirname.cleanup()
+            return None
+
         os.chdir(origdir)
-        dirname.cleanup()
-        return None
+        # Keep files so we can commit them!
+        # shutil.rmtree(dirname)
 
-    os.chdir(origdir)
-    # Keep files so we can commit them!
-    # shutil.rmtree(dirname)
-
-    files_to_patch["package.json"] = dirname + "/package.json"
-    files_to_patch["package-lock.json"] = dirname + "/package-lock.json"
+        files_to_patch["package.json"] = dirname + "/package.json"
+        files_to_patch["package-lock.json"] = dirname + "/package-lock.json"
 
     return files_to_patch
 

@@ -108,7 +108,7 @@ def github_fix_pr():
     ret = True
     for fix_pr_node in globals.fix_pr_data.values():
         globals.printdebug(f"DEBUG: Fix '{fix_pr_node['componentName']}' version '{fix_pr_node['versionFrom']}' in "
-                           f"file '{fix_pr_node['filename']}' using ns '{fix_pr_node['ns']}' to version "
+                           f"file '{fix_pr_node['projfiles']}' using ns '{fix_pr_node['ns']}' to version "
                            f"'{fix_pr_node['versionTo']}'")
 
         pull_request_title = f"Black Duck: Upgrade {fix_pr_node['componentName']} to version " \
@@ -119,17 +119,17 @@ def github_fix_pr():
             continue
 
         if fix_pr_node['ns'] == "npmjs":
-            globals.files_to_patch = NpmUtils.upgrade_npm_dependency(fix_pr_node['filename'],
+            globals.files_to_patch = NpmUtils.upgrade_npm_dependency(fix_pr_node['projfiles'],
                                                                      fix_pr_node['componentName'],
                                                                      fix_pr_node['versionFrom'],
                                                                      fix_pr_node['versionTo'])
         elif fix_pr_node['ns'] == "maven":
-            globals.files_to_patch = MavenUtils.upgrade_maven_dependency(fix_pr_node['filename'],
+            globals.files_to_patch = MavenUtils.upgrade_maven_dependency(fix_pr_node['projfiles'],
                                                                          fix_pr_node['componentName'],
                                                                          fix_pr_node['versionFrom'],
                                                                          fix_pr_node['versionTo'])
         elif fix_pr_node['ns'] == "nuget":
-            globals.files_to_patch = NugetUtils.upgrade_nuget_dependency(fix_pr_node['filename'],
+            globals.files_to_patch = NugetUtils.upgrade_nuget_dependency(fix_pr_node['projfiles'],
                                                                          fix_pr_node['componentName'],
                                                                          fix_pr_node['versionFrom'],
                                                                          fix_pr_node['versionTo'])

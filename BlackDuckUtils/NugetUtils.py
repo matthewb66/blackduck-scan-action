@@ -38,52 +38,53 @@ def convert_to_bdio(component_id):
     return bdio_name
 
 
-def upgrade_nuget_dependency(package_file, component_name, current_version, upgrade_version):
+def upgrade_nuget_dependency(package_files, component_name, current_version, upgrade_version):
     # Key will be actual name, value will be local filename
     files_to_patch = dict()
-    if package_file == 'Unknown':
-        return files_to_patch
 
     # dirname = tempfile.TemporaryDirectory()
-    dirname = tempfile.mkdtemp(prefix="snps-patch-" + component_name + "-" + upgrade_version)
+    tempdirname = tempfile.mkdtemp(prefix="snps-patch-" + component_name + "-" + upgrade_version)
 
-    tree = etree.parse(package_file)
-    root = tree.getroot()
+    for package_file in package_files:
+        # Todo: Manage sub-folders
 
-    namespaces = {'ns': 'http://schemas.microsoft.com/developer/msbuild/2003'}
-    myval = tree.xpath(f'.//PackageReference[@Include="{component_name}"][@Version="{current_version}"]',
-                       namespaces=namespaces)
-    if myval is not None:
-        myval[0].attrib['Version'] = upgrade_version
-    # tree = ET.parse(package_file)
-    # root = tree.getroot()
-    # elem = tree.findall(".//{http://schemas.microsoft.com/developer/msbuild/2003}ItemGroup")    # parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
-    #
-    # ET.register_namespace('', "http://schemas.microsoft.com/developer/msbuild/2003")
-    # ET.register_namespace('xsi', "http://www.w3.org/2001/XMLSchema-instance")
-    #
-    # tree = ET.parse(package_file, parser=ET.XMLParser(target=MyTreeBuilder()))
-    # root = tree.getroot()
-    #
-    # nsmap = {'m': 'http://schemas.microsoft.com/developer/msbuild/2003'}
-    #
-    # globals.printdebug(f"DEBUG: Search for nuget dependency {component_name}@{component_version}")
-    #
-    # for dep in root.findall('.//ItemGroup', nsmap):
-    #     packageref = dep.find('PackageReference', nsmap)
+        tree = etree.parse(package_file)
+        root = tree.getroot()
 
-        # # TODO Also include organization name?
-        # if artifactId == component_name:
-        #     globals.printdebug(f"DEBUG:   Found GroupId={groupId} ArtifactId={artifactId} Version={version}")
-        #     dep.find('m:version', nsmap).text = component_version
+        namespaces = {'ns': 'http://schemas.microsoft.com/developer/msbuild/2003'}
+        myval = tree.xpath(f'.//PackageReference[@Include="{component_name}"][@Version="{current_version}"]',
+                           namespaces=namespaces)
+        if myval is not None:
+            myval[0].attrib['Version'] = upgrade_version
+        # tree = ET.parse(package_file)
+        # root = tree.getroot()
+        # elem = tree.findall(".//{http://schemas.microsoft.com/developer/msbuild/2003}ItemGroup")    # parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
+        #
+        # ET.register_namespace('', "http://schemas.microsoft.com/developer/msbuild/2003")
+        # ET.register_namespace('xsi', "http://www.w3.org/2001/XMLSchema-instance")
+        #
+        # tree = ET.parse(package_file, parser=ET.XMLParser(target=MyTreeBuilder()))
+        # root = tree.getroot()
+        #
+        # nsmap = {'m': 'http://schemas.microsoft.com/developer/msbuild/2003'}
+        #
+        # globals.printdebug(f"DEBUG: Search for nuget dependency {component_name}@{component_version}")
+        #
+        # for dep in root.findall('.//ItemGroup', nsmap):
+        #     packageref = dep.find('PackageReference', nsmap)
 
-    xmlstr = ET.tostring(root, encoding='utf8', method='xml')
-    with open(dirname + "/" + package_file, "wb") as fp:
-        fp.write(xmlstr)
+            # # TODO Also include organization name?
+            # if artifactId == component_name:
+            #     globals.printdebug(f"DEBUG:   Found GroupId={groupId} ArtifactId={artifactId} Version={version}")
+            #     dep.find('m:version', nsmap).text = component_version
 
-    print(f"BD-Scan-Action: INFO: Updated Nuget component in: {package_file}")
+        xmlstr = ET.tostring(root, encoding='utf8', method='xml')
+        with open(tempdirname + "/" + package_file, "wb") as fp:
+            fp.write(xmlstr)
 
-    files_to_patch[package_file] = dirname + "/" + package_file
+        print(f"BD-Scan-Action: INFO: Updated Nuget component in: {package_file}")
+
+        files_to_patch[package_file] = dirname + "/" + package_file
 
     return files_to_patch
 
