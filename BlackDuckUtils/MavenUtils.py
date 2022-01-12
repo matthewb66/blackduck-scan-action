@@ -55,7 +55,7 @@ def upgrade_maven_dependency(package_file, component_name, current_version, comp
 
     nsmap = {'m': 'http://maven.apache.org/POM/4.0.0'}
 
-    globals.printdebug(f"DEBUG: Search for maven dependency {component_name}@{component_version}")
+    # globals.printdebug(f"DEBUG: Search for maven dependency {component_name}@{component_version}")
 
     for dep in root.findall('.//m:dependencies/m:dependency', nsmap):
         groupId = dep.find('m:groupId', nsmap).text
@@ -124,7 +124,7 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
                              upgrade_indirect, upgrade_major):
     # Need to test the short & long term upgrade guidance separately
     detect_connection_opts.append("--detect.blackduck.scan.mode=RAPID")
-    # detect_connection_opts.append("--detect.detector.buildless=true")
+    detect_connection_opts.append("--detect.detector.buildless=true")
     # detect_connection_opts.append("--detect.maven.buildless.legacy.mode=false")
     detect_connection_opts.append(f"--detect.output.path=upgrade-tests")
     detect_connection_opts.append("--detect.cleanup=false")
@@ -218,14 +218,20 @@ def find_allpomfiles():
     return glob.glob('**/pom.xml', recursive=True)
 
 
-def find_projfile(folder, allpoms):
+def get_projfile(entry, allpoms):
     foundpom = ''
+    folderarr = entry.split('/')
+    if len(folderarr) < 3:
+        return ''
+
+    folder = folderarr[-2]
     for pom in allpoms:
         arr = pom.split(os.path.sep)
         if len(arr) >= 2 and arr[-2] == folder:
-            break
-
-    return ''
+            if os.path.isfile(pom):
+                foundpom = pom
+                break
+    return foundpom
 
 
 def get_pom_line(comp, ver, filename):
@@ -239,14 +245,18 @@ def get_pom_line(comp, ver, filename):
 
     nsmap = {'m': 'http://maven.apache.org/POM/4.0.0'}
 
-    globals.printdebug(f"DEBUG: Search for maven dependency {comp}@{ver}")
+    # globals.printdebug(f"DEBUG: Search for maven dependency {comp}@{ver}")
 
     for dep in root.findall('.//m:dependencies/m:dependency', nsmap):
         groupId = dep.find('m:groupId', nsmap).text
         artifactId = dep.find('m:artifactId', nsmap).text
-        version = dep.find('m:version', nsmap).text
+        version = ''
+        verentry = dep.find('m:version', nsmap)
+        if verentry is not None:
+            version = verentry.text
 
-        # TODO Also include organization name?
-        if artifactId == comp:
+        if artifactId == comp and version == ver:
             globals.printdebug(f"DEBUG:   Found GroupId={groupId} ArtifactId={artifactId} Version={version}")
-            dep.find('m:version', nsmap).text = ver
+            return 1
+
+    return -1

@@ -86,14 +86,6 @@ def get_rapid_scan_results(output_dir, bd):
 
 
 def process_rapid_scan(rapid_scan_data, incremental, baseline_comp_cache, bdio_graph, bdio_projects, upgrade_indirect):
-    def get_projfile_nuget(projstring):
-        import urllib.parse
-        projfile = urllib.parse.unquote(projstring)
-        if os.path.isfile(projfile):
-            print(f'Found project file {projfile}')
-            return projfile
-        return ''
-
     allpoms = MavenUtils.find_allpomfiles()
 
     import networkx as nx
@@ -174,6 +166,7 @@ version {item['versionName']} because it was not seen in baseline")
             for path in dep_paths:
                 # First generate a string for easy output and reading
                 # path_modified.pop(0)
+
                 path_mod = []
                 i = 0
                 projfile = ''
@@ -181,19 +174,22 @@ version {item['versionName']} because it was not seen in baseline")
                     if not p.endswith(f'/{pm}') and not p.startswith('http:detect/'):
                         path_mod.append(p)
                     elif p.endswith('/nuget'):
-                        arr = p.split('/')
-                        if len(arr) >= 4:
-                            projfile = get_projfile_nuget(arr[3])
+                        projfile = NugetUtils.get_projfile(p)
                     elif p.endswith('/maven'):
-                        # Need to check the component exists in the package file
-                        arr = p.split('/')
-                        # if len(arr) > 4:
-                        #     projfile = get_projfile_maven(arr[-2], allpoms)
+                        projfile = MavenUtils.get_projfile(p, allpoms)
                     i += 1
+
+                direct_dep = bu.normalise_dep(pm, path_mod[0])
+
+                if comp_ns == 'maven' and projfile != '':
+                    # For Maven - if this is a sub-bom, then need to check if the direct_dep exists there
+                    outfile, linenum = bu.find_comp_in_projfiles([projfile], direct_dep)
+                    if linenum <= 0:
+                        # direct component does not exists in this pomfile - skip this path
+                        continue
 
                 # pathstr = " -> ".join(path_mod)
                 # dependency_paths.append(pathstr)
-                direct_dep = bu.normalise_dep(pm, path_mod[0])
                 if len(path_mod) == 1 and path_mod[0] == http_name:
                     # This is actually a direct dependency
                     dep_dict[item['componentIdentifier']]['deptype'] = 'Direct'
@@ -229,4 +225,5 @@ version {item['versionName']} because it was not seen in baseline")
     #             direct_list.append(dir)
 
     # return dep_dict, direct_list, pm
+    globals.printdebug(f"DEBUG: VULNERABLE DIRECT DEPENDENCIES:\n{direct_deps_to_upgrade.keys()}")
     return dep_dict, direct_deps_to_upgrade, pm

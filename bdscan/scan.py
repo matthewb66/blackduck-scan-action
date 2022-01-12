@@ -178,9 +178,9 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
         pkglines = []
         for projfile in unique(direct_deps_to_upgrade[compid]['projfiles']):
             if projfile == '':
-                package_file, package_line = bu.detect_package_file(globals.detected_package_files, compid)
+                package_file, package_line = bu.find_comp_in_projfiles(globals.detected_package_files, compid)
             else:
-                package_file, package_line = bu.detect_package_file(projfile, compid)
+                package_file, package_line = bu.find_comp_in_projfiles([projfile], compid)
             if package_file != 'Unknown' and package_line > 0:
                 pkgfiles.append(package_file)
                 pkglines.append(package_line)
@@ -431,8 +431,8 @@ def main_process(output, runargs):
         upgrade_dict = {}
         globals.printdebug('DEBUG: DIRECT DEPS TO UPGRADE')
         globals.printdebug(json.dumps(direct_deps_to_upgrade, indent=4))
-        globals.printdebug('DEBUG: VERSION DICT')
-        globals.printdebug(json.dumps(version_dict, indent=4))
+        # globals.printdebug('DEBUG: VERSION DICT')
+        # globals.printdebug(json.dumps(version_dict, indent=4))
         globals.printdebug('DEBUG: GUIDANCE DICT')
         globals.printdebug(json.dumps(guidance_dict, indent=4))
         for dep in direct_deps_to_upgrade.keys():

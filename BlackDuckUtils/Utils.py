@@ -143,18 +143,17 @@ def line_num_for_phrase_in_file(comp, ver, filename, comp_ns):
         return -1
 
 
-def detect_package_file(package_files, componentid):
+def find_comp_in_projfiles(package_files, componentid):
     comp_ns, comp_name, version = parse_component_id(componentid)
 
-    # Need to skip package-lock.json if component exists in package.json
     for package_file in package_files:
         if comp_ns == 'npmjs' and package_file.endswith('package-lock.json'):
+            # Need to skip package-lock.json if component exists in package.json
             print('DEBUG: skipping package-lock.json')
             continue
-        globals.printdebug(f"DEBUG: Searching in '{package_file}' for '{comp_name}'")
-        line = line_num_for_phrase_in_file(comp_name, version, package_file, comps_ns)
-        globals.printdebug(f"DEBUG: line={line}'")
+        line = line_num_for_phrase_in_file(comp_name, version, package_file, comp_ns)
         if line > 0:
+            globals.printdebug(f"DEBUG: '{comp_name}': PKG file'{package_file}' Line {line}")
             return remove_cwd_from_filename(package_file), line
 
     return "Unknown", 0

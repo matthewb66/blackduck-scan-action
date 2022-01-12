@@ -209,3 +209,16 @@ def normalise_dep(dep):
     if dep.find('http:') == 0:
         dep = dep.replace('http:', '').replace('nuget/', 'nuget:')
     return dep
+
+
+def get_projfile(projstring):
+    import urllib.parse
+    arr = projstring.split('/')
+    if len(arr) < 4:
+        return ''
+
+    projfile = urllib.parse.unquote(arr[3])
+    if os.path.isfile(projfile):
+        print(f'Found project file {projfile}')
+        return projfile
+    return ''

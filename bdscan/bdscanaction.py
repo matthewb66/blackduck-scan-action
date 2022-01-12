@@ -67,12 +67,12 @@ def main():
         globals.args.comment_on_pr = False
     elif str(globals.args.comment_on_pr).lower() == 'true':
         globals.args.comment_on_pr = True
-        print('  --comment_on_pr:       ADD COMMENT TO EXISTING PR')
+        print('  --comment_on_pr:        ADD COMMENT TO EXISTING PR')
     else:
         globals.args.comment_on_pr = False
 
     if globals.args.sarif is not None and globals.args.sarif != '':
-        print(f"  --comment_on_pr:      OUTPUT GH SARIF TO '{globals.args.sarif}'")
+        print(f"  --comment_on_pr:       OUTPUT GH SARIF TO '{globals.args.sarif}'")
     else:
         globals.args.sarif = None
 
