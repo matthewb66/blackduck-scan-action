@@ -11,7 +11,7 @@ from BlackDuckUtils import NpmUtils
 from BlackDuckUtils import MavenUtils
 from BlackDuckUtils import NugetUtils
 from BlackDuckUtils import bdio as bdio
-from BlackDuckUtils import BlackDuckOutput as bo
+from BlackDuckUtils import BlackDuckOutput
 
 import subprocess
 
@@ -337,12 +337,12 @@ def process_scan(scan_folder, bd, baseline_comp_cache, incremental, upgrade_indi
         print("BD-Scan-Action: ERROR: Unable to find base project in BDIO file")
         sys.exit(1)
 
-    rapid_scan_data = bo.get_rapid_scan_results(scan_folder, bd)
+    rapid_scan_data = BlackDuckOutput.get_rapid_scan_results(scan_folder, bd)
 
     if rapid_scan_data is None or 'items' not in rapid_scan_data:
         return None, None, None, ''
 
-    dep_dict, direct_deps_to_upgrade, pm = bo.process_rapid_scan(rapid_scan_data['items'], incremental,
+    dep_dict, direct_deps_to_upgrade, pm = BlackDuckOutput.process_rapid_scan(rapid_scan_data['items'], incremental,
                                                                  baseline_comp_cache, bdio_graph, bdio_projects,
                                                                  upgrade_indirect)
     return rapid_scan_data, dep_dict, direct_deps_to_upgrade, pm

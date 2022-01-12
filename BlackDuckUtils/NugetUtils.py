@@ -11,7 +11,7 @@ from lxml import etree
 import xml.etree.ElementTree as ET
 
 # from BlackDuckUtils import run_detect
-from BlackDuckUtils import Utils as bu
+from BlackDuckUtils import Utils
 # from BlackDuckUtils import BlackDuckOutput as bo
 
 
@@ -162,11 +162,11 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
         output = False
         if globals.debug > 0:
             output = True
-        pvurl, projname, vername, retval = bu.run_detect(detect_jar, detect_connection_opts, output)
+        pvurl, projname, vername, retval = Utils.run_detect(detect_jar, detect_connection_opts, output)
 
         if retval == 3:
             # Policy violation returned
-            rapid_scan_data, dep_dict, direct_deps_vuln, pm = bu.process_scan('upgrade-tests', bd, [], False, False)
+            rapid_scan_data, dep_dict, direct_deps_vuln, pm = Utils.process_scan('upgrade-tests', bd, [], False, False)
 
             # print(f'MYDEBUG: Vuln direct deps = {direct_deps_vuln}')
             last_vulnerable_dirdeps = []

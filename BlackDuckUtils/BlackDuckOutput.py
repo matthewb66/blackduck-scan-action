@@ -6,7 +6,7 @@ import os
 import sys
 from bdscan import globals
 
-from BlackDuckUtils import Utils as bu
+from BlackDuckUtils import Utils
 from BlackDuckUtils import NpmUtils
 from BlackDuckUtils import MavenUtils
 from BlackDuckUtils import NugetUtils
@@ -105,7 +105,7 @@ def process_rapid_scan(rapid_scan_data, incremental, baseline_comp_cache, bdio_g
         globals.printdebug(f"DEBUG: Component: {item['componentIdentifier']}")
         globals.printdebug(item)
 
-        comp_ns, comp_name, comp_version = bu.parse_component_id(item['componentIdentifier'])
+        comp_ns, comp_name, comp_version = Utils.parse_component_id(item['componentIdentifier'])
 
         # If comparing to baseline, look up in cache and continue if already exists
         if incremental and item['componentName'] in baseline_comp_cache:
@@ -179,14 +179,21 @@ version {item['versionName']} because it was not seen in baseline")
                         projfile = MavenUtils.get_projfile(p, allpoms)
                     i += 1
 
-                direct_dep = bu.normalise_dep(pm, path_mod[0])
+                direct_dep = Utils.normalise_dep(pm, path_mod[0])
 
-                if comp_ns == 'maven' and projfile != '':
-                    # For Maven - if this is a sub-bom, then need to check if the direct_dep exists there
-                    outfile, linenum = bu.find_comp_in_projfiles([projfile], direct_dep)
-                    if linenum <= 0:
-                        # direct component does not exists in this pomfile - skip this path
-                        continue
+                if projfile != '':
+                    if comp_ns == 'maven':
+                        # For Maven - if this is a sub-bom, then need to check if the direct_dep exists there
+                        outfile, linenum = Utils.find_comp_in_projfiles([projfile], direct_dep)
+                        if linenum <= 0:
+                            # direct component does not exists in this pomfile - skip this path
+                            continue
+                else:
+                    for file in globals.detected_package_files:
+                        outfile, linenum = Utils.find_comp_in_projfiles([file], direct_dep)
+                        if linenum > 0:
+                            projfile = outfile
+                            break
 
                 # pathstr = " -> ".join(path_mod)
                 # dependency_paths.append(pathstr)
@@ -198,22 +205,16 @@ version {item['versionName']} because it was not seen in baseline")
                     dep_dict[item['componentIdentifier']]['directparents'].append(direct_dep)
 
                 # Then log the direct dependencies directly
-                childdep = bu.normalise_dep(pm, item['componentIdentifier'])
+                childdep = Utils.normalise_dep(pm, item['componentIdentifier'])
                 if direct_dep != '' and dep_vulnerable:
                     if direct_dep not in direct_deps_to_upgrade.keys():
-                        direct_deps_to_upgrade[direct_dep] = {
-                            'children': [childdep],
-                            'projfiles': [projfile],
-                        }
-                    elif childdep not in direct_deps_to_upgrade[direct_dep]['children']:
-                        direct_deps_to_upgrade[direct_dep]['children'].append(childdep)
-                        direct_deps_to_upgrade[direct_dep]['projfiles'].append(projfile)
-                    else:
-                        # Need to find the child and check if projfile is in the list
-                        ind = direct_deps_to_upgrade[direct_dep]['children'].index(childdep)
-                        if direct_deps_to_upgrade[direct_dep]['projfiles'][ind] != projfile:
-                            direct_deps_to_upgrade[direct_dep]['children'].append(childdep)
-                            direct_deps_to_upgrade[direct_dep]['projfiles'].append(projfile)
+                        direct_deps_to_upgrade[direct_dep] = [projfile]
+                    # elif childdep not in direct_deps_to_upgrade[direct_dep]['children']:
+                    #     direct_deps_to_upgrade[direct_dep]['children'].append(childdep)
+                    #     direct_deps_to_upgrade[direct_dep]['projfiles'].append(projfile)
+                    elif projfile not in direct_deps_to_upgrade[direct_dep]:
+                        # direct_deps_to_upgrade[direct_dep]['children'].append(childdep)
+                        direct_deps_to_upgrade[direct_dep].append(projfile)
             # dep_dict[item['componentIdentifier']]['paths'] = dependency_paths
 
     # direct_list = []

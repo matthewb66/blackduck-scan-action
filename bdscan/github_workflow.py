@@ -43,7 +43,8 @@ def github_commit_file_and_create_fixpr(g, fix_pr_node):
 
     commit_message = f"Update {fix_pr_node['componentName']} to fix known security vulnerabilities"
 
-    for file_to_patch in globals.files_to_patch:
+    # for file_to_patch in globals.files_to_patch:
+    for file_to_patch in fix_pr_node['projfiles']:
         globals.printdebug(f"DEBUG: Get SHA for file '{file_to_patch}'")
         file = repo.get_contents(file_to_patch)
 

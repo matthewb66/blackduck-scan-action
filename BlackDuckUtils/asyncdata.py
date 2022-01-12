@@ -1,7 +1,7 @@
 import aiohttp
 import asyncio
 from bdscan import globals
-from BlackDuckUtils import Utils as bu
+from BlackDuckUtils import Utils
 
 
 def get_data_async(dirdeps, bd, trustcert):
@@ -60,12 +60,12 @@ async def async_main(compidlist, bd, trustcert):
             arr = tempcompid.split('|')
             if compid not in all_versions.keys():
                 continue
-            curr_ver = bu.normalise_version(arr[-1])
-            short_guidance_ver = bu.normalise_version(all_upgradeguidances[compid][0])
+            curr_ver = Utils.normalise_version(arr[-1])
+            short_guidance_ver = Utils.normalise_version(all_upgradeguidances[compid][0])
             reduced_version_list[compid] = []
 
             for vers, versurl in all_versions[compid][::-1]:
-                n_ver = bu.normalise_version(vers)
+                n_ver = Utils.normalise_version(vers)
                 if n_ver is None:
                     continue
                 if curr_ver is not None:

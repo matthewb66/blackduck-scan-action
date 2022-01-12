@@ -12,7 +12,7 @@ from bdscan import globals
 
 import networkx as nx
 
-from BlackDuckUtils import Utils as bu
+from BlackDuckUtils import Utils
 from BlackDuckUtils import NpmUtils
 from BlackDuckUtils import MavenUtils
 # from blackduck import Client
@@ -98,7 +98,7 @@ def get_bdio_dependency_graph(output_dir):
 
 
 def get_dependency_type(bdio_graph, bdio_projects, componentIdentifier):
-    comp_ns, comp_name, comp_version = bu.parse_component_id(componentIdentifier)    # Matching in the BDIO requires an http: prefix
+    comp_ns, comp_name, comp_version = Utils.parse_component_id(componentIdentifier)    # Matching in the BDIO requires an http: prefix
 
     dependency_type = "Direct"
 

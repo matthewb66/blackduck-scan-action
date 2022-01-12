@@ -6,8 +6,8 @@ from operator import itemgetter
 
 from blackduck import Client
 
-from BlackDuckUtils import BlackDuckOutput as bo
-from BlackDuckUtils import Utils as bu
+from BlackDuckUtils import BlackDuckOutput
+from BlackDuckUtils import Utils
 # from BlackDuckUtils import bdio as bdio
 from BlackDuckUtils import asyncdata as asyncdata
 
@@ -17,10 +17,10 @@ from bdscan import github_workflow
 
 def process_bd_scan(output):
     project_baseline_name, project_baseline_version, globals.detected_package_files = \
-        bo.get_blackduck_status(output)
+        BlackDuckOutput.get_blackduck_status(output)
 
     # Look up baseline data
-    pvurl = bu.get_projver(globals.bd, project_baseline_name, project_baseline_version)
+    pvurl = Utils.get_projver(globals.bd, project_baseline_name, project_baseline_version)
     globals.baseline_comp_cache = dict()
     if globals.args.incremental_results:
         if pvurl == '':
@@ -28,7 +28,7 @@ def process_bd_scan(output):
 version '{project_baseline_version}' - will not present incremental results")
         else:
             globals.printdebug(f"DEBUG: Project Version URL: {pvurl}")
-            baseline_comps = bu.get_comps(globals.bd, pvurl)
+            baseline_comps = Utils.get_comps(globals.bd, pvurl)
             # if (globals.debug): print(f"DEBUG: Baseline components=" + json.dumps(baseline_comps, indent=4))
             # sys.exit(1)
             # Can't cache the component Id / external id very easily here as it's not top-level,
@@ -49,7 +49,7 @@ version '{project_baseline_version}' - will not present incremental results")
     #     print("ERROR: Unable to find base project in BDIO file")
     #     sys.exit(1)
 
-    rapid_scan_data, dep_dict, direct_deps_to_upgrade, pm = bu.process_scan(
+    rapid_scan_data, dep_dict, direct_deps_to_upgrade, pm = Utils.process_scan(
         globals.args.output, globals.bd, globals.baseline_comp_cache,
         globals.args.incremental_results, globals.args.upgrade_indirect)
 
@@ -78,13 +78,13 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
 
     def count_vulns(parentid, childid, existing_vulns):
         if parentid != '':
-            parent_ns, parent_name, parent_ver = bu.parse_component_id(parentid)
+            parent_ns, parent_name, parent_ver = Utils.parse_component_id(parentid)
         else:
-            parent_ns = ''
+            # parent_ns = ''
             parent_name = ''
             parent_ver = ''
 
-        child_ns, child_name, child_ver = bu.parse_component_id(childid)
+        child_ns, child_name, child_ver = Utils.parse_component_id(childid)
         if globals.args.incremental_results and child_name in globals.baseline_comp_cache:
             if (child_ver in globals.baseline_comp_cache[child_name] and
                     globals.baseline_comp_cache[child_name][child_ver] == 1):
@@ -166,7 +166,7 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
     for compid in direct_deps_to_upgrade.keys():
         # compid = item['componentIdentifier']
 
-        comp_ns, comp_name, comp_version = bu.parse_component_id(compid)
+        comp_ns, comp_name, comp_version = Utils.parse_component_id(compid)
 
         if compid in upgrade_dict:
             upgrade_ver = upgrade_dict[compid]
@@ -176,11 +176,11 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
         # If package file for this direct dep is blank, find from the detect-returned package files
         pkgfiles = []
         pkglines = []
-        for projfile in unique(direct_deps_to_upgrade[compid]['projfiles']):
+        for projfile in unique(direct_deps_to_upgrade[compid]):
             if projfile == '':
-                package_file, package_line = bu.find_comp_in_projfiles(globals.detected_package_files, compid)
+                package_file, package_line = Utils.find_comp_in_projfiles(globals.detected_package_files, compid)
             else:
-                package_file, package_line = bu.find_comp_in_projfiles([projfile], compid)
+                package_file, package_line = Utils.find_comp_in_projfiles([projfile], compid)
             if package_file != 'Unknown' and package_line > 0:
                 pkgfiles.append(package_file)
                 pkglines.append(package_line)
@@ -203,7 +203,7 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
 
         for childid in children:
             # Find child in rapidscan data
-            child_ns, child_name, child_ver = bu.parse_component_id(childid)
+            child_ns, child_name, child_ver = Utils.parse_component_id(childid)
             if childid != compid:
                 children_string += f"{child_name}/{child_ver},"
             else:
@@ -222,7 +222,7 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
             uver = 'N/A'
         else:
             uver = upgrade_ver
-        # pfile = bu.remove_cwd_from_filename(package_file)
+        # pfile = Utils.remove_cwd_from_filename(package_file)
 
         # | Direct Dependency | Max Vuln Severity | No. of Vulns | Upgrade to | File |
         md_directdeps_list.append(
@@ -257,6 +257,13 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
             longtext_md = ''
             longtext = ''
 
+        projfiles = []
+        for projfile in direct_deps_to_upgrade[compid]:
+            if projfile != '':
+                projfiles.append(Utils.remove_cwd_from_filename(projfile))
+            else:
+                pass
+                
         fix_pr_node = dict()
         if upgrade_ver is not None:
             fix_pr_node = {
@@ -264,7 +271,7 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
                 'versionFrom': comp_version,
                 'versionTo': upgrade_ver,
                 'ns': comp_ns,
-                'filename': bu.remove_cwd_from_filename(package_file),
+                'projfiles': Utils.remove_cwd_from_filename(package_file),
                 'comments': [f"## Dependency {comp_name}/{comp_version}\n{shorttext}"],
                 'comments_markdown': [longtext_md],
                 'comments_markdown_footer': ''
@@ -281,7 +288,7 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
                 {
                     'physicalLocation': {
                         'artifactLocation': {
-                            'uri': bu.remove_cwd_from_filename(package_file),
+                            'uri': Utils.remove_cwd_from_filename(package_file),
                         },
                         'region': {
                             'startLine': package_line,
@@ -355,9 +362,9 @@ def test_upgrades(upgrade_dict, deplist, pm):
     if globals.args.trustcert:
         bd_connect_args.append(f'--blackduck.trust.cert=true')
     # print(deplist)
-    # good_upgrades_dict = bu.attempt_indirect_upgrade(
+    # good_upgrades_dict = Utils.attempt_indirect_upgrade(
     #     pm, deplist, upgrade_dict, globals.detect_jar, bd_connect_args, globals.bd)
-    good_upgrades_dict = bu.attempt_indirect_upgrade(
+    good_upgrades_dict = Utils.attempt_indirect_upgrade(
         pm, deplist, upgrade_dict, globals.detect_jar, bd_connect_args, globals.bd, globals.args.upgrade_indirect,
         globals.args.upgrade_major)
     return good_upgrades_dict
@@ -393,7 +400,7 @@ def write_sarif(sarif_file):
 
 def main_process(output, runargs):
     # Run DETECT
-    pvurl, projname, vername, detect_return_code = bu.run_detect(globals.detect_jar, runargs, True)
+    pvurl, projname, vername, detect_return_code = Utils.run_detect(globals.detect_jar, runargs, True)
     if detect_return_code > 0 and detect_return_code != 3:
         print(f"BD-Scan-Action: ERROR: Black Duck detect returned exit code {detect_return_code}")
         sys.exit(detect_return_code)
@@ -438,7 +445,7 @@ def main_process(output, runargs):
         for dep in direct_deps_to_upgrade.keys():
             globals.printdebug(f'DEBUG: Checking {dep}')
             if dep in version_dict.keys() and dep in guidance_dict.keys():
-                upgrade_dict[dep] = bu.find_upgrade_versions(dep, version_dict[dep], origin_dict, guidance_dict[dep],
+                upgrade_dict[dep] = Utils.find_upgrade_versions(dep, version_dict[dep], origin_dict, guidance_dict[dep],
                                                              globals.args.upgrade_major)
                 globals.printdebug(f'DEBUG: find_upgrade_versions() returned {upgrade_dict[dep]}')
 
