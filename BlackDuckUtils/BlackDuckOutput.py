@@ -181,13 +181,14 @@ version {item['versionName']} because it was not seen in baseline")
                     if not p.endswith(f'/{pm}') and not p.startswith('http:detect/'):
                         path_mod.append(p)
                     elif p.endswith('/nuget'):
-                            arr = p.split('/')
-                            if len(arr) >= 4:
-                                projfile = get_projfile_nuget(arr[3])
+                        arr = p.split('/')
+                        if len(arr) >= 4:
+                            projfile = get_projfile_nuget(arr[3])
                     elif p.endswith('/maven'):
-                            arr = p.split('/')
-                            # if len(arr) > 4:
-                            #     projfile = get_projfile_maven(arr[-2], allpoms)
+                        # Need to check the component exists in the package file
+                        arr = p.split('/')
+                        # if len(arr) > 4:
+                        #     projfile = get_projfile_maven(arr[-2], allpoms)
                     i += 1
 
                 # pathstr = " -> ".join(path_mod)

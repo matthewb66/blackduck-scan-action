@@ -223,8 +223,30 @@ def find_projfile(folder, allpoms):
     for pom in allpoms:
         arr = pom.split(os.path.sep)
         if len(arr) >= 2 and arr[-2] == folder:
-
             break
 
-
     return ''
+
+
+def get_pom_line(comp, ver, filename):
+    # parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
+
+    ET.register_namespace('', "http://maven.apache.org/POM/4.0.0")
+    ET.register_namespace('xsi', "http://www.w3.org/2001/XMLSchema-instance")
+
+    tree = ET.parse(filename, parser=ET.XMLParser(target=MyTreeBuilder()))
+    root = tree.getroot()
+
+    nsmap = {'m': 'http://maven.apache.org/POM/4.0.0'}
+
+    globals.printdebug(f"DEBUG: Search for maven dependency {comp}@{ver}")
+
+    for dep in root.findall('.//m:dependencies/m:dependency', nsmap):
+        groupId = dep.find('m:groupId', nsmap).text
+        artifactId = dep.find('m:artifactId', nsmap).text
+        version = dep.find('m:version', nsmap).text
+
+        # TODO Also include organization name?
+        if artifactId == comp:
+            globals.printdebug(f"DEBUG:   Found GroupId={groupId} ArtifactId={artifactId} Version={version}")
+            dep.find('m:version', nsmap).text = ver
