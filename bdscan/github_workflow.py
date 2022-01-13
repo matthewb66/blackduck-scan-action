@@ -22,8 +22,8 @@ def github_create_pull_request_comment(g, pr, comments_markdown):
     issue.create_comment(body)
 
 
-def github_commit_file_and_create_fixpr(g, fix_pr_node):
-    if len(globals.files_to_patch) == 0:
+def github_commit_file_and_create_fixpr(g, fix_pr_node, files_to_patch):
+    if len(files_to_patch) == 0:
         print('BD-Scan-Action: WARN: Unable to apply fix patch - cannot determine containing package file')
         return False
     globals.printdebug(f"DEBUG: Look up GitHub repo '{globals.github_repo}'")
@@ -44,21 +44,21 @@ def github_commit_file_and_create_fixpr(g, fix_pr_node):
     commit_message = f"Update {fix_pr_node['componentName']} to fix known security vulnerabilities"
 
     # for file_to_patch in globals.files_to_patch:
-    for file_to_patch in fix_pr_node['projfiles']:
-        globals.printdebug(f"DEBUG: Get SHA for file '{file_to_patch}'")
-        file = repo.get_contents(file_to_patch)
+    for file in fix_pr_node['projfiles']:
+        globals.printdebug(f"DEBUG: Get SHA for file '{file}'")
+        file = repo.get_contents(file)
 
-        globals.printdebug(f"DEBUG: Upload file '{file_to_patch}'")
+        globals.printdebug(f"DEBUG: Upload file '{file}'")
         try:
-            with open(globals.files_to_patch[file_to_patch], 'r') as fp:
+            with open(files_to_patch[file], 'r') as fp:
                 file_contents = fp.read()
         except Exception as exc:
-            print(f"BD-Scan-Action: ERROR: Unable to open package file '{globals.files_to_patch[file_to_patch]}'"
+            print(f"BD-Scan-Action: ERROR: Unable to open package file '{files_to_patch[file]}'"
                   f" - {str(exc)}")
             return False
 
-        globals.printdebug(f"DEBUG: Update file '{file_to_patch}' with commit message '{commit_message}'")
-        file = repo.update_file(file_to_patch, commit_message, file_contents, file.sha, branch=new_branch_name)
+        globals.printdebug(f"DEBUG: Update file '{file}' with commit message '{commit_message}'")
+        file = repo.update_file(file, commit_message, file_contents, file.sha, branch=new_branch_name)
 
     pr_body = f"\n# Synopsys Black Duck Auto Pull Request\n" \
               f"Upgrade {fix_pr_node['componentName']} from version {fix_pr_node['versionFrom']} to " \
@@ -119,17 +119,17 @@ def github_fix_pr():
             continue
 
         if fix_pr_node['ns'] == "npmjs":
-            globals.files_to_patch = NpmUtils.upgrade_npm_dependency(fix_pr_node['projfiles'],
+            files_to_patch = NpmUtils.upgrade_npm_dependency(fix_pr_node['projfiles'],
                                                                      fix_pr_node['componentName'],
                                                                      fix_pr_node['versionFrom'],
                                                                      fix_pr_node['versionTo'])
         elif fix_pr_node['ns'] == "maven":
-            globals.files_to_patch = MavenUtils.upgrade_maven_dependency(fix_pr_node['projfiles'],
+            files_to_patch = MavenUtils.upgrade_maven_dependency(fix_pr_node['projfiles'],
                                                                          fix_pr_node['componentName'],
                                                                          fix_pr_node['versionFrom'],
                                                                          fix_pr_node['versionTo'])
         elif fix_pr_node['ns'] == "nuget":
-            globals.files_to_patch = NugetUtils.upgrade_nuget_dependency(fix_pr_node['projfiles'],
+            files_to_patch = NugetUtils.upgrade_nuget_dependency(fix_pr_node['projfiles'],
                                                                          fix_pr_node['componentName'],
                                                                          fix_pr_node['versionFrom'],
                                                                          fix_pr_node['versionTo'])
@@ -138,12 +138,12 @@ def github_fix_pr():
                   f"not supported yet")
             return False
 
-        if len(globals.files_to_patch) == 0:
+        if len(files_to_patch) == 0:
             print('BD-Scan-Action: WARN: Unable to apply fix patch - cannot determine containing package file')
             return False
 
-        if not github_commit_file_and_create_fixpr(g, fix_pr_node):
-            ret = False
+        # if not github_commit_file_and_create_fixpr(g, fix_pr_node, files_to_patch):
+        #     ret = False
     return ret
 
 

@@ -79,12 +79,12 @@ def upgrade_nuget_dependency(package_files, component_name, current_version, upg
             #     dep.find('m:version', nsmap).text = component_version
 
         xmlstr = ET.tostring(root, encoding='utf8', method='xml')
-        with open(tempdirname + "/" + package_file, "wb") as fp:
+        with open(os.path.join(tempdirname, package_file), "wb") as fp:
             fp.write(xmlstr)
 
         print(f"BD-Scan-Action: INFO: Updated Nuget component in: {package_file}")
 
-        files_to_patch[package_file] = tempdirname + "/" + package_file
+        files_to_patch[package_file] = os.path.join(tempdirname, package_file)
 
     return files_to_patch
 

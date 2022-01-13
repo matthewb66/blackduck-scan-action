@@ -60,19 +60,31 @@ def upgrade_maven_dependency(package_files, component_name, current_version, com
         for dep in root.findall('.//m:dependencies/m:dependency', nsmap):
             groupId = dep.find('m:groupId', nsmap).text
             artifactId = dep.find('m:artifactId', nsmap).text
-            version = dep.find('m:version', nsmap).text
-
+            verentry = dep.find('m:version', nsmap)
             if artifactId == component_name:
-                globals.printdebug(f"DEBUG:   Found GroupId={groupId} ArtifactId={artifactId} Version={version}")
-                dep.find('m:version', nsmap).text = component_version
+                if verentry is not None:
+                    version = verentry.text
+                    globals.printdebug(f"DEBUG:   Found GroupId={groupId} ArtifactId={artifactId} Version={version}")
+                    verentry.text = component_version
+                    break
+                else:
+                    # ToDo: Need to add version tag as it does not exist
+                    new = ET.Element('version')
+                    new.text = component_version
+                    dep.append(new)
+                    break
+
+        # Change into sub-folder for packagefile
+        subtempdir = os.path.dirname(package_file)
+        os.makedirs(os.path.join(tempdirname, subtempdir), exist_ok=True)
 
         xmlstr = ET.tostring(root, encoding='utf8', method='xml')
-        with open(tempdirname + "/" + package_file, "wb") as fp:
+        with open(os.path.join(tempdirname, package_file), "wb") as fp:
             fp.write(xmlstr)
 
-        print(f"BD-Scan-Action: INFO: Updated Maven component in: {package_file}")
+        print(f"BD-Scan-Action: INFO: Updated Maven component in: {os.path.join(tempdirname, package_file)}")
 
-        files_to_patch[package_file] = tempdirname + "/" + package_file
+        files_to_patch[package_file] = os.path.join(tempdirname, package_file)
 
     return files_to_patch
 
@@ -253,6 +265,10 @@ def get_pom_line(comp, ver, filename):
         verentry = dep.find('m:version', nsmap)
         if verentry is not None:
             version = verentry.text
+
+        if artifactId == comp and version == '':
+            globals.printdebug(f"DEBUG:   Found GroupId={groupId} ArtifactId={artifactId} NOVersion")
+            return 1
 
         if artifactId == comp and version == ver:
             globals.printdebug(f"DEBUG:   Found GroupId={groupId} ArtifactId={artifactId} Version={version}")

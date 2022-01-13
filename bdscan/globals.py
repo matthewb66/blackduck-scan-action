@@ -23,7 +23,6 @@ comment_on_pr_comments = []
 tool_rules = []
 results = []
 fix_pr_data = dict()
-files_to_patch = {}
 rscan_items = []
 
 github_token = ''

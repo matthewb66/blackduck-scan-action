@@ -178,12 +178,17 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
         pkglines = []
         for projfile in unique(direct_deps_to_upgrade[compid]):
             if projfile == '':
+                # Find component in top-level pkgfiles
                 package_file, package_line = Utils.find_comp_in_projfiles(globals.detected_package_files, compid)
             else:
                 package_file, package_line = Utils.find_comp_in_projfiles([projfile], compid)
-            if package_file != 'Unknown' and package_line > 0:
-                pkgfiles.append(package_file)
-                pkglines.append(package_line)
+            if package_file == 'Unknown' or package_line <= 0:
+                # component doesn't exist in pkgfile - skip
+                continue
+            pkgfiles.append(package_file)
+            pkglines.append(package_line)
+        if len(pkgfiles) == 0:
+            continue
 
         children = []
         for alldep in dep_dict.keys():
@@ -257,12 +262,12 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
             longtext_md = ''
             longtext = ''
 
-        projfiles = []
-        for projfile in direct_deps_to_upgrade[compid]:
-            if projfile != '':
-                projfiles.append(Utils.remove_cwd_from_filename(projfile))
-            else:
-                pass
+        # projfiles = []
+        # for projfile in direct_deps_to_upgrade[compid]:
+        #     if projfile != '':
+        #         projfiles.append(Utils.remove_cwd_from_filename(projfile))
+        #     else:
+        #         pass
                 
         fix_pr_node = dict()
         if upgrade_ver is not None:
@@ -271,7 +276,7 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
                 'versionFrom': comp_version,
                 'versionTo': upgrade_ver,
                 'ns': comp_ns,
-                'projfiles': Utils.remove_cwd_from_filename(package_file),
+                'projfiles': pkgfiles,
                 'comments': [f"## Dependency {comp_name}/{comp_version}\n{shorttext}"],
                 'comments_markdown': [longtext_md],
                 'comments_markdown_footer': ''
@@ -288,10 +293,10 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
                 {
                     'physicalLocation': {
                         'artifactLocation': {
-                            'uri': Utils.remove_cwd_from_filename(package_file),
+                            'uri': pkgfiles[0],
                         },
                         'region': {
-                            'startLine': package_line,
+                            'startLine': pkglines[0],
                         }
                     }
                 }

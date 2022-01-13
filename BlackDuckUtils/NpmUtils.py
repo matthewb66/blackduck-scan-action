@@ -34,7 +34,6 @@ def upgrade_npm_dependency(package_files, component_name, current_version, compo
     origdir = os.getcwd()
 
     for package_file in package_files:
-        os.chdir(origdir)
         if os.path.isabs(package_file):
             package_file = Utils.remove_cwd_from_filename(package_file)
 
@@ -46,7 +45,7 @@ def upgrade_npm_dependency(package_files, component_name, current_version, compo
 
         print(f'DEBUG: upgrade_npm_dependency() - working in folder {os.getcwd()}')
 
-        cmd = "npm install " + component_name + "@" + component_version
+        cmd = f"npm install {component_name}@{component_version} --package-lock-only"
         print(f"BD-Scan-Action: INFO: Executing NPM to update component: {cmd}")
         err = os.system(cmd)
         if err > 0:
@@ -59,8 +58,8 @@ def upgrade_npm_dependency(package_files, component_name, current_version, compo
         # Keep files so we can commit them!
         # shutil.rmtree(dirname)
 
-        files_to_patch["package.json"] = tempdirname + "/package.json"
-        files_to_patch["package-lock.json"] = tempdirname + "/package-lock.json"
+        files_to_patch["package.json"] = os.path.join(tempdirname, "/package.json")
+        files_to_patch["package-lock.json"] = os.path.join(tempdirname, "/package-lock.json")
 
     return files_to_patch
 
