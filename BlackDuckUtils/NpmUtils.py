@@ -29,14 +29,21 @@ def upgrade_npm_dependency(package_files, component_name, current_version, compo
     # Key will be actual name, value will be local filename
 
     files_to_patch = dict()
+    # dirname = tempfile.TemporaryDirectory()
+    tempdirname = tempfile.mkdtemp(prefix="snps-patch-" + component_name + "-" + component_version)
+    origdir = os.getcwd()
 
     for package_file in package_files:
-        # Todo: Work on sub-folders
-        # dirname = tempfile.TemporaryDirectory()
-        dirname = tempfile.mkdtemp(prefix="snps-patch-" + component_name + "-" + component_version)
+        os.chdir(origdir)
+        if os.path.isabs(package_file):
+            package_file = Utils.remove_cwd_from_filename(package_file)
 
-        origdir = os.getcwd()
-        os.chdir(dirname)
+        # Change into sub-folder for packagefile
+        subtempdir = os.path.dirname(package_file)
+        os.chdir(tempdirname)
+        os.makedirs(subtempdir, exist_ok=True)
+        os.chdir(subtempdir)
+
         print(f'DEBUG: upgrade_npm_dependency() - working in folder {os.getcwd()}')
 
         cmd = "npm install " + component_name + "@" + component_version
@@ -45,15 +52,15 @@ def upgrade_npm_dependency(package_files, component_name, current_version, compo
         if err > 0:
             print(f"BD-Scan-Action: ERROR: Error {err} executing NPM command")
             os.chdir(origdir)
-            dirname.cleanup()
+            tempdirname.cleanup()
             return None
 
         os.chdir(origdir)
         # Keep files so we can commit them!
         # shutil.rmtree(dirname)
 
-        files_to_patch["package.json"] = dirname + "/package.json"
-        files_to_patch["package-lock.json"] = dirname + "/package-lock.json"
+        files_to_patch["package.json"] = tempdirname + "/package.json"
+        files_to_patch["package-lock.json"] = tempdirname + "/package-lock.json"
 
     return files_to_patch
 

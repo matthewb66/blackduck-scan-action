@@ -84,7 +84,7 @@ def upgrade_nuget_dependency(package_files, component_name, current_version, upg
 
         print(f"BD-Scan-Action: INFO: Updated Nuget component in: {package_file}")
 
-        files_to_patch[package_file] = dirname + "/" + package_file
+        files_to_patch[package_file] = tempdirname + "/" + package_file
 
     return files_to_patch
 

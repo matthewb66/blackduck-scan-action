@@ -44,8 +44,7 @@ def upgrade_maven_dependency(package_files, component_name, current_version, com
     tempdirname = tempfile.mkdtemp(prefix="snps-patch-" + component_name + "-" + component_version)
 
     for package_file in package_files:
-        dir = os.path.sep.join(package_file.split(os.path.sep)[:-1])
-        # ToDo: Create pom file in sub-folder
+        # dir = os.path.sep.join(package_file.split(os.path.sep)[:-1])
         parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
 
         ET.register_namespace('', "http://maven.apache.org/POM/4.0.0")
