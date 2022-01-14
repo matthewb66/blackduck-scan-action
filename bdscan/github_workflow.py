@@ -1,6 +1,7 @@
 import random
 import re
 import sys
+import os
 from bdscan import globals
 
 from github import Github
@@ -22,8 +23,8 @@ def github_create_pull_request_comment(g, pr, comments_markdown):
     issue.create_comment(body)
 
 
-def github_commit_file_and_create_fixpr(g, fix_pr_node):
-    if len(globals.files_to_patch) == 0:
+def github_commit_file_and_create_fixpr(g, fix_pr_node, files_to_patch):
+    if len(files_to_patch) == 0:
         print('BD-Scan-Action: WARN: Unable to apply fix patch - cannot determine containing package file')
         return False
     globals.printdebug(f"DEBUG: Look up GitHub repo '{globals.github_repo}'")
@@ -43,21 +44,23 @@ def github_commit_file_and_create_fixpr(g, fix_pr_node):
 
     commit_message = f"Update {fix_pr_node['componentName']} to fix known security vulnerabilities"
 
-    for file_to_patch in globals.files_to_patch:
-        globals.printdebug(f"DEBUG: Get SHA for file '{file_to_patch}'")
-        file = repo.get_contents(file_to_patch)
+    # for file_to_patch in globals.files_to_patch:
+    for pkgfile in fix_pr_node['projfiles']:
+        globals.printdebug(f"DEBUG: Get SHA for file '{pkgfile}'")
+        orig_contents = repo.get_contents(pkgfile)
 
-        globals.printdebug(f"DEBUG: Upload file '{file_to_patch}'")
+        print(os.getcwd())
+        globals.printdebug(f"DEBUG: Upload file '{pkgfile}'")
         try:
-            with open(globals.files_to_patch[file_to_patch], 'r') as fp:
-                file_contents = fp.read()
+            with open(files_to_patch[pkgfile], 'r') as fp:
+                new_contents = fp.read()
         except Exception as exc:
-            print(f"BD-Scan-Action: ERROR: Unable to open package file '{globals.files_to_patch[file_to_patch]}'"
+            print(f"BD-Scan-Action: ERROR: Unable to open package file '{files_to_patch[pkgfile]}'"
                   f" - {str(exc)}")
             return False
 
-        globals.printdebug(f"DEBUG: Update file '{file_to_patch}' with commit message '{commit_message}'")
-        file = repo.update_file(file_to_patch, commit_message, file_contents, file.sha, branch=new_branch_name)
+        globals.printdebug(f"DEBUG: Update file '{pkgfile}' with commit message '{commit_message}'")
+        file = repo.update_file(pkgfile, commit_message, new_contents, orig_contents.sha, branch=new_branch_name)
 
     pr_body = f"\n# Synopsys Black Duck Auto Pull Request\n" \
               f"Upgrade {fix_pr_node['componentName']} from version {fix_pr_node['versionFrom']} to " \
@@ -107,7 +110,7 @@ def github_fix_pr():
     ret = True
     for fix_pr_node in globals.fix_pr_data.values():
         globals.printdebug(f"DEBUG: Fix '{fix_pr_node['componentName']}' version '{fix_pr_node['versionFrom']}' in "
-                           f"file '{fix_pr_node['filename']}' using ns '{fix_pr_node['ns']}' to version "
+                           f"file '{fix_pr_node['projfiles']}' using ns '{fix_pr_node['ns']}' to version "
                            f"'{fix_pr_node['versionTo']}'")
 
         pull_request_title = f"Black Duck: Upgrade {fix_pr_node['componentName']} to version " \
@@ -118,30 +121,27 @@ def github_fix_pr():
             continue
 
         if fix_pr_node['ns'] == "npmjs":
-            globals.files_to_patch = NpmUtils.upgrade_npm_dependency(fix_pr_node['filename'],
-                                                                     fix_pr_node['componentName'],
-                                                                     fix_pr_node['versionFrom'],
-                                                                     fix_pr_node['versionTo'])
+            files_to_patch = NpmUtils.upgrade_npm_dependency(
+                fix_pr_node['projfiles'],fix_pr_node['componentName'],fix_pr_node['versionFrom'],
+                fix_pr_node['versionTo'])
         elif fix_pr_node['ns'] == "maven":
-            globals.files_to_patch = MavenUtils.upgrade_maven_dependency(fix_pr_node['filename'],
-                                                                         fix_pr_node['componentName'],
-                                                                         fix_pr_node['versionFrom'],
-                                                                         fix_pr_node['versionTo'])
+            files_to_patch = MavenUtils.upgrade_maven_dependency(
+                fix_pr_node['projfiles'],fix_pr_node['componentName'],fix_pr_node['versionFrom'],
+                fix_pr_node['versionTo'])
         elif fix_pr_node['ns'] == "nuget":
-            globals.files_to_patch = NugetUtils.upgrade_nuget_dependency(fix_pr_node['filename'],
-                                                                         fix_pr_node['componentName'],
-                                                                         fix_pr_node['versionFrom'],
-                                                                         fix_pr_node['versionTo'])
+            files_to_patch = NugetUtils.upgrade_nuget_dependency(
+                fix_pr_node['projfiles'],fix_pr_node['componentName'],fix_pr_node['versionFrom'],
+                fix_pr_node['versionTo'])
         else:
             print(f"BD-Scan-Action: WARN: Generating a Fix PR for packages of type '{fix_pr_node['ns']}' is "
                   f"not supported yet")
             return False
 
-        if len(globals.files_to_patch) == 0:
+        if len(files_to_patch) == 0:
             print('BD-Scan-Action: WARN: Unable to apply fix patch - cannot determine containing package file')
             return False
 
-        if not github_commit_file_and_create_fixpr(g, fix_pr_node):
+        if not github_commit_file_and_create_fixpr(g, fix_pr_node, files_to_patch):
             ret = False
     return ret
 

@@ -11,7 +11,7 @@ from BlackDuckUtils import NpmUtils
 from BlackDuckUtils import MavenUtils
 from BlackDuckUtils import NugetUtils
 from BlackDuckUtils import bdio as bdio
-from BlackDuckUtils import BlackDuckOutput as bo
+from BlackDuckUtils import BlackDuckOutput
 
 import subprocess
 
@@ -129,32 +129,34 @@ def get_upgrade_guidance(bd, component_identifier):
     return short_term, long_term
 
 
-def line_num_for_phrase_in_file(phrase, filename):
-    try:
-        with open(filename, 'r') as f:
-            for (i, line) in enumerate(f):
-                if phrase.lower() in line.lower():
-                    return i
-    except Exception as e:
+def line_num_for_phrase_in_file(comp, ver, filename, comp_ns):
+    if comp_ns == 'maven':
+        return MavenUtils.get_pom_line(comp, ver, filename)
+    else:
+        try:
+            with open(filename, 'r') as f:
+                for (i, line) in enumerate(f):
+                    if comp.lower() in line.lower():
+                        return i
+        except Exception as e:
+            return -1
         return -1
-    return -1
 
 
-def detect_package_file(detected_package_files, componentid):
+def find_comp_in_projfiles(package_files, componentid):
     comp_ns, comp_name, version = parse_component_id(componentid)
 
-    # Need to skip package-lock.json if component exists in package.json
-    for package_file in detected_package_files:
-        if package_file.endswith('package-lock.json'):
+    for package_file in package_files:
+        if comp_ns == 'npmjs' and package_file.endswith('package-lock.json'):
+            # Need to skip package-lock.json if component exists in package.json
             print('DEBUG: skipping package-lock.json')
             continue
-        globals.printdebug(f"DEBUG: Searching in '{package_file}' for '{comp_name}'")
-        line = line_num_for_phrase_in_file(comp_name, package_file)
-        globals.printdebug(f"DEBUG: line={line}'")
+        line = line_num_for_phrase_in_file(comp_name, version, package_file, comp_ns)
         if line > 0:
+            globals.printdebug(f"DEBUG: '{comp_name}': PKG file'{package_file}' Line {line}")
             return remove_cwd_from_filename(package_file), line
 
-    return "Unknown", 1
+    return "Unknown", 0
 
 
 def get_comps(bd, pv):
@@ -185,7 +187,8 @@ def get_projver(bd, projname, vername):
         for ver in versions:
             if ver['versionName'] == vername:
                 return ver['_meta']['href']
-    print("BD-Scan-Action: ERROR: Version '{}' does not exist in project '{}'".format(projname, vername))
+    print(f"BD-Scan-Action: WARN: Version '{vername}' does not exist in project '{projname}' - will skip checking "
+          f"previous full scan")
     return ''
 
 
@@ -335,12 +338,12 @@ def process_scan(scan_folder, bd, baseline_comp_cache, incremental, upgrade_indi
         print("BD-Scan-Action: ERROR: Unable to find base project in BDIO file")
         sys.exit(1)
 
-    rapid_scan_data = bo.get_rapid_scan_results(scan_folder, bd)
+    rapid_scan_data = BlackDuckOutput.get_rapid_scan_results(scan_folder, bd)
 
     if rapid_scan_data is None or 'items' not in rapid_scan_data:
         return None, None, None, ''
 
-    dep_dict, direct_deps_to_upgrade, pm = bo.process_rapid_scan(rapid_scan_data['items'], incremental,
+    dep_dict, direct_deps_to_upgrade, pm = BlackDuckOutput.process_rapid_scan(rapid_scan_data['items'], incremental,
                                                                  baseline_comp_cache, bdio_graph, bdio_projects,
                                                                  upgrade_indirect)
     return rapid_scan_data, dep_dict, direct_deps_to_upgrade, pm

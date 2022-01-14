@@ -10,7 +10,7 @@ import tempfile
 import xml.etree.ElementTree as ET
 
 # from BlackDuckUtils import run_detect
-from BlackDuckUtils import Utils as bu
+from BlackDuckUtils import Utils
 # from BlackDuckUtils import BlackDuckOutput as bo
 
 
@@ -36,44 +36,55 @@ def convert_to_bdio(component_id):
     return bdio_name
 
 
-def upgrade_maven_dependency(package_file, component_name, current_version, component_version):
+def upgrade_maven_dependency(package_files, component_name, current_version, component_version):
     # Key will be actual name, value will be local filename
-    if package_file == 'Unknown':
-        return None
     files_to_patch = dict()
 
     # dirname = tempfile.TemporaryDirectory()
-    dirname = tempfile.mkdtemp(prefix="snps-patch-" + component_name + "-" + component_version)
+    tempdirname = tempfile.mkdtemp(prefix="snps-patch-" + component_name + "-" + component_version)
 
-    parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
+    for package_file in package_files:
+        # dir = os.path.sep.join(package_file.split(os.path.sep)[:-1])
+        parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
 
-    ET.register_namespace('', "http://maven.apache.org/POM/4.0.0")
-    ET.register_namespace('xsi', "http://www.w3.org/2001/XMLSchema-instance")
+        ET.register_namespace('', "http://maven.apache.org/POM/4.0.0")
+        ET.register_namespace('xsi', "http://www.w3.org/2001/XMLSchema-instance")
 
-    tree = ET.parse(package_file, parser=ET.XMLParser(target=MyTreeBuilder()))
-    root = tree.getroot()
+        tree = ET.parse(package_file, parser=ET.XMLParser(target=MyTreeBuilder()))
+        root = tree.getroot()
 
-    nsmap = {'m': 'http://maven.apache.org/POM/4.0.0'}
+        nsmap = {'m': 'http://maven.apache.org/POM/4.0.0'}
 
-    globals.printdebug(f"DEBUG: Search for maven dependency {component_name}@{component_version}")
+        # globals.printdebug(f"DEBUG: Search for maven dependency {component_name}@{component_version}")
 
-    for dep in root.findall('.//m:dependencies/m:dependency', nsmap):
-        groupId = dep.find('m:groupId', nsmap).text
-        artifactId = dep.find('m:artifactId', nsmap).text
-        version = dep.find('m:version', nsmap).text
+        for dep in root.findall('.//m:dependencies/m:dependency', nsmap):
+            groupId = dep.find('m:groupId', nsmap).text
+            artifactId = dep.find('m:artifactId', nsmap).text
+            verentry = dep.find('m:version', nsmap)
+            if artifactId == component_name:
+                if verentry is not None:
+                    version = verentry.text
+                    globals.printdebug(f"DEBUG:   Found GroupId={groupId} ArtifactId={artifactId} Version={version}")
+                    verentry.text = component_version
+                    break
+                else:
+                    # ToDo: Need to add version tag as it does not exist
+                    new = ET.Element('version')
+                    new.text = component_version
+                    dep.append(new)
+                    break
 
-        # TODO Also include organization name?
-        if artifactId == component_name:
-            globals.printdebug(f"DEBUG:   Found GroupId={groupId} ArtifactId={artifactId} Version={version}")
-            dep.find('m:version', nsmap).text = component_version
+        # Change into sub-folder for packagefile
+        subtempdir = os.path.dirname(package_file)
+        os.makedirs(os.path.join(tempdirname, subtempdir), exist_ok=True)
 
-    xmlstr = ET.tostring(root, encoding='utf8', method='xml')
-    with open(dirname + "/" + package_file, "wb") as fp:
-        fp.write(xmlstr)
+        xmlstr = ET.tostring(root, encoding='utf8', method='xml')
+        with open(os.path.join(tempdirname, package_file), "wb") as fp:
+            fp.write(xmlstr)
 
-    print(f"BD-Scan-Action: INFO: Updated Maven component in: {package_file}")
+        print(f"BD-Scan-Action: INFO: Updated Maven component in: {os.path.join(tempdirname, package_file)}")
 
-    files_to_patch[package_file] = dirname + "/" + package_file
+        files_to_patch[package_file] = os.path.join(tempdirname, package_file)
 
     return files_to_patch
 
@@ -124,7 +135,7 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
                              upgrade_indirect, upgrade_major):
     # Need to test the short & long term upgrade guidance separately
     detect_connection_opts.append("--detect.blackduck.scan.mode=RAPID")
-    # detect_connection_opts.append("--detect.detector.buildless=true")
+    detect_connection_opts.append("--detect.detector.buildless=true")
     # detect_connection_opts.append("--detect.maven.buildless.legacy.mode=false")
     detect_connection_opts.append(f"--detect.output.path=upgrade-tests")
     detect_connection_opts.append("--detect.cleanup=false")
@@ -156,7 +167,7 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
         if len(test_upgrade_list) == 0:
             # print('No upgrades to test')
             continue
-        print(f'BD-Scan-Action: Cycle {ind + 1} - Validating {len(test_dirdeps)} potential upgrades')
+        print(f'BD-Scan-Action: Cycle {ind + 1} - Validating {len(test_upgrade_list)} potential upgrades')
 
         if not create_pom(test_upgrade_list):
             return None
@@ -164,11 +175,11 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
         output = False
         if globals.debug > 0:
             output = True
-        pvurl, projname, vername, retval = bu.run_detect(detect_jar, detect_connection_opts, output)
+        pvurl, projname, vername, retval = Utils.run_detect(detect_jar, detect_connection_opts, output)
 
         if retval == 3:
             # Policy violation returned
-            rapid_scan_data, dep_dict, direct_deps_vuln, pm = bu.process_scan('upgrade-tests', bd, [], False, False)
+            rapid_scan_data, dep_dict, direct_deps_vuln, pm = Utils.process_scan('upgrade-tests', bd, [], False, False)
 
             # print(f'MYDEBUG: Vuln direct deps = {direct_deps_vuln}')
             last_vulnerable_dirdeps = []
@@ -211,3 +222,56 @@ def normalise_dep(dep):
     if dep.find('http:') == 0:
         dep = dep.replace('http:', '')
     return dep.replace('/', ':')
+
+
+def find_allpomfiles():
+    import glob
+    return glob.glob('**/pom.xml', recursive=True)
+
+
+def get_projfile(entry, allpoms):
+    foundpom = ''
+    folderarr = entry.split('/')
+    if len(folderarr) < 3:
+        return ''
+
+    folder = folderarr[-2]
+    for pom in allpoms:
+        arr = pom.split(os.path.sep)
+        if len(arr) >= 2 and arr[-2] == folder:
+            if os.path.isfile(pom):
+                foundpom = pom
+                break
+    return foundpom
+
+
+def get_pom_line(comp, ver, filename):
+    # parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
+
+    ET.register_namespace('', "http://maven.apache.org/POM/4.0.0")
+    ET.register_namespace('xsi', "http://www.w3.org/2001/XMLSchema-instance")
+
+    tree = ET.parse(filename, parser=ET.XMLParser(target=MyTreeBuilder()))
+    root = tree.getroot()
+
+    nsmap = {'m': 'http://maven.apache.org/POM/4.0.0'}
+
+    # globals.printdebug(f"DEBUG: Search for maven dependency {comp}@{ver}")
+
+    for dep in root.findall('.//m:dependencies/m:dependency', nsmap):
+        groupId = dep.find('m:groupId', nsmap).text
+        artifactId = dep.find('m:artifactId', nsmap).text
+        version = ''
+        verentry = dep.find('m:version', nsmap)
+        if verentry is not None:
+            version = verentry.text
+
+        if artifactId == comp and version == '':
+            globals.printdebug(f"DEBUG:   Found GroupId={groupId} ArtifactId={artifactId} NOVersion")
+            return 1
+
+        if artifactId == comp and version == ver:
+            globals.printdebug(f"DEBUG:   Found GroupId={groupId} ArtifactId={artifactId} Version={version}")
+            return 1
+
+    return -1

@@ -1,4 +1,4 @@
-scan_utility_version = '1.0.16'
+scan_utility_version = '1.0.19'
 detect_jar = "/tmp/synopsys-detect.jar"
 # workflow_script = "/Users/mbrad/working/blackduck-scan-action/blackduck-rapid-scan-to-github.py"
 # detect_jar = "./synopsys-detect.jar"
@@ -23,7 +23,6 @@ comment_on_pr_comments = []
 tool_rules = []
 results = []
 fix_pr_data = dict()
-files_to_patch = {}
 rscan_items = []
 
 github_token = ''

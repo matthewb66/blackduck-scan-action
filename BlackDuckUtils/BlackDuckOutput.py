@@ -6,7 +6,7 @@ import os
 import sys
 from bdscan import globals
 
-from BlackDuckUtils import Utils as bu
+from BlackDuckUtils import Utils
 from BlackDuckUtils import NpmUtils
 from BlackDuckUtils import MavenUtils
 from BlackDuckUtils import NugetUtils
@@ -86,6 +86,8 @@ def get_rapid_scan_results(output_dir, bd):
 
 
 def process_rapid_scan(rapid_scan_data, incremental, baseline_comp_cache, bdio_graph, bdio_projects, upgrade_indirect):
+    allpoms = MavenUtils.find_allpomfiles()
+
     import networkx as nx
     pm = ''
 
@@ -103,7 +105,7 @@ def process_rapid_scan(rapid_scan_data, incremental, baseline_comp_cache, bdio_g
         globals.printdebug(f"DEBUG: Component: {item['componentIdentifier']}")
         globals.printdebug(item)
 
-        comp_ns, comp_name, comp_version = bu.parse_component_id(item['componentIdentifier'])
+        comp_ns, comp_name, comp_version = Utils.parse_component_id(item['componentIdentifier'])
 
         # If comparing to baseline, look up in cache and continue if already exists
         if incremental and item['componentName'] in baseline_comp_cache:
@@ -155,69 +157,74 @@ version {item['versionName']} because it was not seen in baseline")
         globals.printdebug(f"DEBUG: Looking for {http_name}")
         ancs = nx.ancestors(bdio_graph, http_name)
         ancs_list = list(ancs)
-        new_ancslist = []
-        # Deal with special case for aggregate project file hierarchy
-        i = 0
-        for a in ancs_list:
-            if not a.endswith(f'/{pm}'):
-                new_ancslist.append(a)
-            i += 1
-        ancs_list = new_ancslist[:]
 
-        globals.printdebug(f"DEBUG:   Ancestors are: {ancs_list}")
-        # pred = nx.DiGraph.predecessors(globals.bdio_graph, http_name)
-        # pred_list = list(pred)
-        # globals.printdebug(f"DEBUG:   Predecessors are: {ancs_list}")
-        if len(ancs_list) != 1:
-            # Transitive Dependency
-            if upgrade_indirect:
-                # If this is a transitive dependency, what are the flows?
-                dep_dict[item['componentIdentifier']]['deptype'] = 'Indirect'
-                for proj in bdio_projects:
-                    dep_paths = nx.all_simple_paths(bdio_graph, source=proj, target=http_name)
-                    globals.printdebug(f"DEBUG: Paths to '{http_name}'")
-                    for path in dep_paths:
-                        # First generate a string for easy output and reading
-                        path_modified = path[:]
-                        path_modified.pop(0)
-                        new_path = []
-                        i = 0
-                        for p in path_modified:
-                            if not p.endswith(f'/{pm}'):
-                                new_path.append(p)
-                            i += 1
-                        path_modified = new_path[:]
+        # Process the paths
+        dep_dict[item['componentIdentifier']]['deptype'] = 'Indirect'
+        for proj in bdio_projects:
+            dep_paths = nx.all_simple_paths(bdio_graph, source=proj, target=http_name)
+            globals.printdebug(f"DEBUG: Paths to '{http_name}'")
+            for path in dep_paths:
+                # First generate a string for easy output and reading
+                # path_modified.pop(0)
 
-                        pathstr = " -> ".join(path_modified)
-                        dependency_paths.append(pathstr)
-                        direct_dep = bu.normalise_dep(pm, path_modified[0])
-                        if len(path_modified) == 1 and path_modified[0] == http_name:
-                            # This is actually a direct dependency
-                            dep_dict[item['componentIdentifier']]['deptype'] = 'Direct'
-                        else:
-                            dep_dict[item['componentIdentifier']]['directparents'].append(direct_dep)
+                path_mod = []
+                i = 0
+                projfile = ''
+                for p in path:
+                    if not p.endswith(f'/{pm}') and not p.startswith('http:detect/'):
+                        path_mod.append(p)
+                    elif p.endswith('/nuget'):
+                        projfile = NugetUtils.get_projfile(p)
+                    elif p.endswith('/maven'):
+                        projfile = MavenUtils.get_projfile(p, allpoms)
+                    i += 1
 
-                        # Then log the direct dependencies directly
-                        if direct_dep != '' and dep_vulnerable and direct_dep not in direct_deps_to_upgrade.keys():
-                            direct_deps_to_upgrade[direct_dep] = \
-                                bu.normalise_dep(pm, item['componentIdentifier'])
-                            # print(f'TRANSITIVE ANCESTOR VULNERABLE: {direct_dep} (child {http_name})')
+                direct_dep = Utils.normalise_dep(pm, path_mod[0])
 
-                    dep_dict[item['componentIdentifier']]['paths'] = dependency_paths
-        else:
-            # Direct dependency
-            direct_dep = bu.normalise_dep(pm, item['componentIdentifier'])
-            if direct_dep not in direct_deps_to_upgrade.keys() and dep_vulnerable:
-                direct_deps_to_upgrade[direct_dep] = direct_dep
-                # print('DIRECT DEP VULNERABLE: ' + direct_dep)
-            dep_dict[direct_dep]['deptype'] = 'Direct'
+                if projfile != '':
+                    if comp_ns == 'maven':
+                        # For Maven - if this is a sub-bom, then need to check if the direct_dep exists there
+                        outfile, linenum = Utils.find_comp_in_projfiles([projfile], direct_dep)
+                        if linenum <= 0:
+                            # direct component does not exists in this pomfile - skip this path
+                            continue
+                else:
+                    for file in globals.detected_package_files:
+                        outfile, linenum = Utils.find_comp_in_projfiles([file], direct_dep)
+                        if linenum > 0:
+                            projfile = outfile
+                            break
 
-    direct_list = []
-    # Check for duplicate direct and indirect deps
-    for dir in direct_deps_to_upgrade.keys():
-        item = direct_deps_to_upgrade[dir]
-        if dir not in direct_list:
-            if dir == item or item not in direct_deps_to_upgrade.keys():
-                direct_list.append(dir)
+                # pathstr = " -> ".join(path_mod)
+                # dependency_paths.append(pathstr)
+                if len(path_mod) == 1 and path_mod[0] == http_name:
+                    # This is actually a direct dependency
+                    dep_dict[item['componentIdentifier']]['deptype'] = 'Direct'
+                    dep_dict[item['componentIdentifier']]['directparents'] = []
+                else:
+                    dep_dict[item['componentIdentifier']]['directparents'].append(direct_dep)
 
-    return dep_dict, direct_list, pm
+                # Then log the direct dependencies directly
+                childdep = Utils.normalise_dep(pm, item['componentIdentifier'])
+                if direct_dep != '' and dep_vulnerable:
+                    if direct_dep not in direct_deps_to_upgrade.keys():
+                        direct_deps_to_upgrade[direct_dep] = [projfile]
+                    # elif childdep not in direct_deps_to_upgrade[direct_dep]['children']:
+                    #     direct_deps_to_upgrade[direct_dep]['children'].append(childdep)
+                    #     direct_deps_to_upgrade[direct_dep]['projfiles'].append(projfile)
+                    elif projfile not in direct_deps_to_upgrade[direct_dep]:
+                        # direct_deps_to_upgrade[direct_dep]['children'].append(childdep)
+                        direct_deps_to_upgrade[direct_dep].append(projfile)
+            # dep_dict[item['componentIdentifier']]['paths'] = dependency_paths
+
+    # direct_list = []
+    # # Check for duplicate direct and indirect deps
+    # for dir in direct_deps_to_upgrade.keys():
+    #     item = direct_deps_to_upgrade[dir]
+    #     if dir not in direct_list:
+    #         if dir == item or item not in direct_deps_to_upgrade.keys():
+    #             direct_list.append(dir)
+
+    # return dep_dict, direct_list, pm
+    globals.printdebug(f"DEBUG: VULNERABLE DIRECT DEPENDENCIES:\n{direct_deps_to_upgrade.keys()}")
+    return dep_dict, direct_deps_to_upgrade, pm

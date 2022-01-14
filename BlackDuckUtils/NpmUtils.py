@@ -5,7 +5,7 @@ import shutil
 import tempfile
 import json
 
-from BlackDuckUtils import Utils as bu
+from BlackDuckUtils import Utils
 from bdscan import globals
 # from BlackDuckUtils import BlackDuckOutput as bo
 
@@ -25,35 +25,43 @@ def convert_dep_to_bdio(component_id):
     return bdio_name
 
 
-def upgrade_npm_dependency(package_file, component_name, current_version, component_version):
+def upgrade_npm_dependency(package_files, component_name, current_version, component_version):
     # Key will be actual name, value will be local filename
-    if package_file == 'Unknown':
-        return None
 
     files_to_patch = dict()
-
     # dirname = tempfile.TemporaryDirectory()
-    dirname = tempfile.mkdtemp(prefix="snps-patch-" + component_name + "-" + component_version)
-
+    tempdirname = tempfile.mkdtemp(prefix="snps-patch-" + component_name + "-" + component_version)
     origdir = os.getcwd()
-    os.chdir(dirname)
-    print(f'DEBUG: upgrade_npm_dependency() - working in folder {os.getcwd()}')
 
-    cmd = "npm install " + component_name + "@" + component_version
-    print(f"BD-Scan-Action: INFO: Executing NPM to update component: {cmd}")
-    err = os.system(cmd)
-    if err > 0:
-        print(f"BD-Scan-Action: ERROR: Error {err} executing NPM command")
+    for package_file in package_files:
+        if os.path.isabs(package_file):
+            package_file = Utils.remove_cwd_from_filename(package_file)
+
+        # Change into sub-folder for packagefile
+        subtempdir = os.path.dirname(package_file)
+        os.chdir(tempdirname)
+        if len(subtempdir) > 0:
+            os.makedirs(subtempdir, exist_ok=True)
+            os.chdir(subtempdir)
+        shutil.copy2(os.path.join(origdir, package_file), os.path.join(tempdirname, package_file))
+
+        print(f'DEBUG: upgrade_npm_dependency() - working in folder {os.getcwd()}')
+
+        cmd = f"npm install {component_name}@{component_version} --package-lock-only >/dev/null 2>&1"
+        print(f"BD-Scan-Action: INFO: Executing NPM to update component: {cmd}")
+        err = os.system(cmd)
+        if err > 0:
+            print(f"BD-Scan-Action: ERROR: Error {err} executing NPM command")
+            os.chdir(origdir)
+            tempdirname.cleanup()
+            return None
+
         os.chdir(origdir)
-        dirname.cleanup()
-        return None
+        # Keep files so we can commit them!
+        # shutil.rmtree(dirname)
 
-    os.chdir(origdir)
-    # Keep files so we can commit them!
-    # shutil.rmtree(dirname)
-
-    files_to_patch["package.json"] = dirname + "/package.json"
-    files_to_patch["package-lock.json"] = dirname + "/package-lock.json"
+        files_to_patch["package.json"] = os.path.join(tempdirname, "package.json")
+        files_to_patch["package-lock.json"] = os.path.join(tempdirname, "package-lock.json")
 
     return files_to_patch
 
@@ -100,8 +108,8 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
                 continue
             # print(f'DEBUG: Upgrade dep = {comp}@{version}')
 
-            # cmd = f"npm install {comp}@{upgrade_version} --package-lock-only >/dev/null 2>&1"
-            cmd = f"npm install {comp}@{upgrade_version} --package-lock-only"
+            cmd = f"npm install {comp}@{upgrade_version} --package-lock-only >/dev/null 2>&1"
+            # cmd = f"npm install {comp}@{upgrade_version} --package-lock-only"
             # print(cmd)
             ret = os.system(cmd)
 
@@ -120,14 +128,14 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
         output = False
         if globals.debug > 0:
             output = True
-        pvurl, projname, vername, retval = bu.run_detect(detect_jar, detect_connection_opts, output)
+        pvurl, projname, vername, retval = Utils.run_detect(detect_jar, detect_connection_opts, output)
 
         if retval == 3:
             # Policy violation returned
-            rapid_scan_data, dep_dict, direct_deps_vuln, pm = bu.process_scan('upgrade-tests', bd, [], False, False)
+            rapid_scan_data, dep_dict, direct_deps_vuln, pm = Utils.process_scan('upgrade-tests', bd, [], False, False)
 
             # print(f'MYDEBUG: Vuln direct deps = {direct_deps_vuln}')
-            for vulndep in direct_deps_vuln:
+            for vulndep in direct_deps_vuln.keys():
                 arr = vulndep.replace('/', ':').split(':')
                 compname = arr[1]
                 #
