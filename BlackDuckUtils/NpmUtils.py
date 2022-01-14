@@ -40,12 +40,14 @@ def upgrade_npm_dependency(package_files, component_name, current_version, compo
         # Change into sub-folder for packagefile
         subtempdir = os.path.dirname(package_file)
         os.chdir(tempdirname)
-        os.makedirs(subtempdir, exist_ok=True)
-        os.chdir(subtempdir)
+        if len(subtempdir) > 0:
+            os.makedirs(subtempdir, exist_ok=True)
+            os.chdir(subtempdir)
+        shutil.copy2(os.path.join(origdir, package_file), os.path.join(tempdirname, package_file))
 
         print(f'DEBUG: upgrade_npm_dependency() - working in folder {os.getcwd()}')
 
-        cmd = f"npm install {component_name}@{component_version} --package-lock-only"
+        cmd = f"npm install {component_name}@{component_version} --package-lock-only >/dev/null 2>&1"
         print(f"BD-Scan-Action: INFO: Executing NPM to update component: {cmd}")
         err = os.system(cmd)
         if err > 0:
@@ -58,8 +60,8 @@ def upgrade_npm_dependency(package_files, component_name, current_version, compo
         # Keep files so we can commit them!
         # shutil.rmtree(dirname)
 
-        files_to_patch["package.json"] = os.path.join(tempdirname, "/package.json")
-        files_to_patch["package-lock.json"] = os.path.join(tempdirname, "/package-lock.json")
+        files_to_patch["package.json"] = os.path.join(tempdirname, "package.json")
+        files_to_patch["package-lock.json"] = os.path.join(tempdirname, "package-lock.json")
 
     return files_to_patch
 
@@ -106,8 +108,8 @@ def attempt_indirect_upgrade(deps_list, upgrade_dict, detect_jar, detect_connect
                 continue
             # print(f'DEBUG: Upgrade dep = {comp}@{version}')
 
-            # cmd = f"npm install {comp}@{upgrade_version} --package-lock-only >/dev/null 2>&1"
-            cmd = f"npm install {comp}@{upgrade_version} --package-lock-only"
+            cmd = f"npm install {comp}@{upgrade_version} --package-lock-only >/dev/null 2>&1"
+            # cmd = f"npm install {comp}@{upgrade_version} --package-lock-only"
             # print(cmd)
             ret = os.system(cmd)
 
