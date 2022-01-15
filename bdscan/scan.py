@@ -155,7 +155,7 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
     ]
     md_vulns_header = [
         "",
-        "| Parent | Child Component | Vulnerability | Score |  Policy | Description | Current Ver |",
+        "| Parent | Child Component | Vulnerability | Score |  Policy Violated | Description | Current Ver |",
         "| --- | --- | --- | --- | --- | --- | --- |"
     ]
     md_directdeps_list = []
@@ -404,7 +404,30 @@ def write_sarif(sarif_file):
 
 
 def main_process(output, runargs):
+    globals.github_token = os.getenv("GITHUB_TOKEN")
+    globals.github_repo = os.getenv("GITHUB_REPOSITORY")
+    globals.github_ref = os.getenv("GITHUB_REF")
+    globals.printdebug(f'GITHUB_REF={globals.github_ref}')
+    globals.github_api_url = os.getenv("GITHUB_API_URL")
+    globals.github_sha = os.getenv("GITHUB_SHA")
+    globals.printdebug(f'GITHUB_SHA={globals.github_sha}')
+
+    if (globals.github_token is None or globals.github_repo is None or globals.github_branch is None or
+            globals.github_api_url is None):
+        print("BD-Scan-Action: ERROR: Cannot find GITHUB_TOKEN, GITHUB_REPOSITORY, GITHUB_REF and/or GITHUB_API_URL "
+              "in the environment - are you running from a GitHub action?")
+        return False
+
+    if globals.args.fix_pr and not github_workflow.check_files_in_commit():
+        print('BD-Scan-Action: No package manager changes in commit - skipping dependency analysis')
+        sys.exit(0)
+
+    if globals.args.comment_on_pr and not github_workflow.check_files_in_pull_request():
+        print('BD-Scan-Action: No package manager changes in pull request - skipping dependency analysis')
+        sys.exit(0)
+
     # Run DETECT
+    print(f"BD-Scan-Action: INFO: Running Black Duck detect with the following options: {runargs}")
     pvurl, projname, vername, detect_return_code = Utils.run_detect(globals.detect_jar, runargs, True)
     if detect_return_code > 0 and detect_return_code != 3:
         print(f"BD-Scan-Action: ERROR: Black Duck detect returned exit code {detect_return_code}")
@@ -465,14 +488,6 @@ def main_process(output, runargs):
     if globals.args.sarif is not None and globals.args.sarif != '':
         print(f"BD-Scan-Action: Writing sarif output file '{globals.args.sarif}' ...")
         write_sarif(globals.args.sarif)
-
-    globals.github_token = os.getenv("GITHUB_TOKEN")
-    globals.github_repo = os.getenv("GITHUB_REPOSITORY")
-    globals.github_ref = os.getenv("GITHUB_REF")
-    globals.printdebug(f'GITHUB_REF={globals.github_ref}')
-    globals.github_api_url = os.getenv("GITHUB_API_URL")
-    globals.github_sha = os.getenv("GITHUB_SHA")
-    globals.printdebug(f'GITHUB_SHA={globals.github_sha}')
 
     # Optionally generate Fix PR
     if globals.args.fix_pr:

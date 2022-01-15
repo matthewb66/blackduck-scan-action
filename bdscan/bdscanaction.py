@@ -67,12 +67,12 @@ def main():
         globals.args.comment_on_pr = False
     elif str(globals.args.comment_on_pr).lower() == 'true':
         globals.args.comment_on_pr = True
-        print('  --comment_on_pr:        ADD COMMENT TO EXISTING PR')
+        print('  --comment_on_pr:       ADD COMMENT TO EXISTING PR')
     else:
         globals.args.comment_on_pr = False
 
     if globals.args.sarif is not None and globals.args.sarif != '':
-        print(f"  --comment_on_pr:       OUTPUT GH SARIF TO '{globals.args.sarif}'")
+        print(f"  --sarif:               OUTPUT GH SARIF TO '{globals.args.sarif}'")
     else:
         globals.args.sarif = None
 
@@ -158,8 +158,6 @@ def main():
     if globals.args.fix_pr and globals.args.comment_on_pr:
         print("BD-Scan-Action: Cannot specify BOTH fix_pr and comment_on_pr - Exiting")
         sys.exit(1)
-
-    print(f"BD-Scan-Action: INFO: Running Black Duck detect with the following options: {runargs}")
 
     scan.main_process(globals.args.output, runargs)
 

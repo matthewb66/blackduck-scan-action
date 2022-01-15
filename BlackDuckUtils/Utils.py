@@ -279,6 +279,9 @@ def attempt_indirect_upgrade(pm, deps_list, upgrade_dict, detect_jar, connectopt
     print('\nRECOMMENDED UPGRADES FOR DIRECT DEPENDENCIES:')
     for upgrade in good_upgrades_dict.keys():
         print(f"- {upgrade}: Upgrade version = {good_upgrades_dict[upgrade]}")
+    if len(good_upgrades_dict) == 0:
+        print('- None')
+    print('\n')
 
     return good_upgrades_dict
 
