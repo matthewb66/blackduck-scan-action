@@ -56,27 +56,10 @@ def upgrade_nuget_dependency(package_files, component_name, current_version, upg
                            namespaces=namespaces)
         if myval is not None:
             myval[0].attrib['Version'] = upgrade_version
-        # tree = ET.parse(package_file)
-        # root = tree.getroot()
-        # elem = tree.findall(".//{http://schemas.microsoft.com/developer/msbuild/2003}ItemGroup")    # parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
-        #
-        # ET.register_namespace('', "http://schemas.microsoft.com/developer/msbuild/2003")
-        # ET.register_namespace('xsi', "http://www.w3.org/2001/XMLSchema-instance")
-        #
-        # tree = ET.parse(package_file, parser=ET.XMLParser(target=MyTreeBuilder()))
-        # root = tree.getroot()
-        #
-        # nsmap = {'m': 'http://schemas.microsoft.com/developer/msbuild/2003'}
-        #
-        # globals.printdebug(f"DEBUG: Search for nuget dependency {component_name}@{component_version}")
-        #
-        # for dep in root.findall('.//ItemGroup', nsmap):
-        #     packageref = dep.find('PackageReference', nsmap)
 
-            # # TODO Also include organization name?
-            # if artifactId == component_name:
-            #     globals.printdebug(f"DEBUG:   Found GroupId={groupId} ArtifactId={artifactId} Version={version}")
-            #     dep.find('m:version', nsmap).text = component_version
+        # Change into sub-folder for packagefile
+        subtempdir = os.path.dirname(package_file)
+        os.makedirs(os.path.join(tempdirname, subtempdir), exist_ok=True)
 
         xmlstr = ET.tostring(root, encoding='utf8', method='xml')
         with open(os.path.join(tempdirname, package_file), "wb") as fp:

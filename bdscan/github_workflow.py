@@ -1,5 +1,5 @@
 import random
-import re
+# import re
 import sys
 import os
 from bdscan import globals
@@ -93,11 +93,6 @@ def github_get_pull_requests(g):
 
 def github_fix_pr():
     # fix_pr_components = dict()
-    if (globals.github_token is None or globals.github_repo is None or globals.github_branch is None or
-            globals.github_api_url is None):
-        print("BD-Scan-Action: ERROR: Cannot find GITHUB_TOKEN, GITHUB_REPOSITORY, GITHUB_REF and/or GITHUB_API_URL "
-              "in the environment - are you running from a GitHub action?")
-        return False
 
     globals.printdebug(f"DEBUG: Connect to GitHub at {globals.github_api_url}")
     g = Github(globals.github_token, base_url=globals.github_api_url)
@@ -147,12 +142,6 @@ def github_fix_pr():
 
 
 def github_pr_comment():
-    if (globals.github_token is None or globals.github_repo is None or globals.github_ref is None or
-            globals.github_api_url is None or globals.github_sha is None):
-        print("BD-Scan-Action: ERROR: Cannot find GITHUB_TOKEN, GITHUB_REPOSITORY, GITHUB_REF, GTIHUB_SHA and/or "
-              "GITHUB_API_URL in the environment - are you running from a GitHub action?")
-        return False
-
     globals.printdebug(f"DEBUG: Connect to GitHub at {globals.github_api_url}")
     g = Github(globals.github_token, base_url=globals.github_api_url)
 
@@ -167,26 +156,23 @@ def github_pr_comment():
     ref = repo.get_git_ref(globals.github_ref[5:].replace("/merge", "/head"))
     globals.printdebug(ref)
 
-    pull_number_for_sha = None
-    m = re.search('pull\/\(.+?\)\/', globals.github_ref)
-    if m:
-        pull_number_for_sha = int(m.group(1))
+    github_sha = ref.object.sha
 
-    globals.printdebug(f"DEBUG: Pull request #{pull_number_for_sha}")
-
-    if pull_number_for_sha is None:
-        print(f"BD-Scan-Action: ERROR: Unable to find pull request #{pull_number_for_sha}")
-        return False
-
-    pr = repo.get_pull(pull_number_for_sha)
-
-    pr_comments = repo.get_issues_comments(sort='updated', direction='desc')
-    existing_comment = None
-    for pr_comment in pr_comments:
-        globals.printdebug(f"DEBUG: Issue comment={pr_comment.body}")
-        if "Synopsys Black Duck XXXX" in pr_comment.body:
-            globals.printdebug(f"DEBUG: Found existing comment")
-            existing_comment = pr_comment
+    # globals.printdebug(f"DEBUG: Pull request #{pull_number_for_sha}")
+    #
+    # if pull_number_for_sha is None:
+    #     print(f"BD-Scan-Action: ERROR: Unable to find pull request #{pull_number_for_sha}")
+    #     return False
+    #
+    # pr = repo.get_pull(pull_number_for_sha)
+    #
+    # pr_comments = repo.get_issues_comments(sort='updated', direction='desc')
+    # existing_comment = None
+    # for pr_comment in pr_comments:
+    #     globals.printdebug(f"DEBUG: Issue comment={pr_comment.body}")
+    #     if "Synopsys Black Duck XXXX" in pr_comment.body:
+    #         globals.printdebug(f"DEBUG: Found existing comment")
+    #         existing_comment = pr_comment
 
     # # Tricky here, we want everything all in one comment. So prepare a header, then append each of the comments and
     # # create a comment
@@ -197,30 +183,24 @@ def github_pr_comment():
     #
     # for comment in globals.comment_on_pr_comments:
     #     comments_markdown.append(comment)
-    comments_markdown = "# Synopsys Black Duck" + "\n".join(globals.comment_on_pr_comments)
-
-    if len(comments_markdown) > 65535:
-        comments_markdown = comments_markdown[:65535]
-
-    if existing_comment is not None:
-        globals.printdebug(f"DEBUG: Update/edit existing comment for PR #{pull_number_for_sha}\n{comments_markdown}")
-        # existing_comment.edit("\n".join(comments_markdown))
-        existing_comment.edit(comments_markdown)
-    else:
-        globals.printdebug(f"DEBUG: Create new comment for PR #{pull_number_for_sha}")
-        github_create_pull_request_comment(g, pr, comments_markdown)
-        issue = repo.get_issue(number=pr.number)
-        issue.create_comment(comments_markdown)
+    # comments_markdown = "# Synopsys Black Duck" + "\n".join(globals.comment_on_pr_comments)
+    #
+    # if len(comments_markdown) > 65535:
+    #     comments_markdown = comments_markdown[:65535]
+    #
+    # if existing_comment is not None:
+    #     globals.printdebug(f"DEBUG: Update/edit existing comment for PR #{pull_number_for_sha}\n{comments_markdown}")
+    #     # existing_comment.edit("\n".join(comments_markdown))
+    #     existing_comment.edit(comments_markdown)
+    # else:
+    #     globals.printdebug(f"DEBUG: Create new comment for PR #{pull_number_for_sha}")
+    #     github_create_pull_request_comment(g, pr, comments_markdown)
+    #     issue = repo.get_issue(number=pr.number)
+    #     issue.create_comment(comments_markdown)
     return True
 
 
 def github_set_commit_status(is_failure):
-    if (globals.github_token is None or globals.github_repo is None or globals.github_ref is None or
-            globals.github_api_url is None or globals.github_sha is None):
-        print("BD-Scan-Action: ERROR: Cannot find GITHUB_TOKEN, GITHUB_REPOSITORY, GITHUB_REF, GTIHUB_SHA and/or "
-              "GITHUB_API_URL in the environment - are you running from a GitHub action?")
-        sys.exit(1)
-
     globals.printdebug(f"DEBUG: Set check status for commit '{globals.github_sha}', connect to GitHub at "
                        f"{globals.github_api_url}")
     g = Github(globals.github_token, base_url=globals.github_api_url)
@@ -246,3 +226,92 @@ def github_set_commit_status(is_failure):
 
     globals.printdebug(f"DEBUG: Status:")
     globals.printdebug(status)
+
+
+def check_files_in_commit():
+    g = Github(globals.github_token, base_url=globals.github_api_url)
+    repo = g.get_repo(globals.github_repo)
+    commit = repo.get_commit('HEAD')
+    globals.printdebug(commit)
+
+    found = False
+    for commit_file in commit.files:
+        if os.path.basename(commit_file.filename) in globals.pkg_files:
+            found = True
+            break
+
+        if os.path.splitext(commit_file.filename)[-1] in globals.pkg_exts:
+            found = True
+            break
+
+    return found
+
+
+def check_files_in_pull_request():
+    globals.printdebug(f"DEBUG: Connect to GitHub at {globals.github_api_url}")
+    g = Github(globals.github_token, base_url=globals.github_api_url)
+
+    globals.printdebug(f"DEBUG: Look up GitHub repo '{globals.github_repo}'")
+    repo = g.get_repo(globals.github_repo)
+    globals.printdebug(repo)
+
+    globals.printdebug(f"DEBUG: Look up GitHub ref '{globals.github_ref}'")
+    # Remove leading refs/ as the API will prepend it on it's own
+    # Actually look pu the head not merge ref to get the latest commit so
+    # we can find the pull request
+    ref = repo.get_git_ref(globals.github_ref[5:].replace("/merge", "/head"))
+    globals.printdebug(ref)
+
+    github_sha = ref.object.sha
+
+    pulls = repo.get_pulls(state='open', sort='created', base=repo.default_branch, direction="desc")
+    pr = None
+    pr_commit = None
+    if (globals.debug): print(f"DEBUG: Pull requests:")
+    pull_number_for_sha = 0
+    for pull in pulls:
+        if (globals.debug): print(f"DEBUG: Pull request number: {pull.number}")
+        # Can we find the current commit sha?
+        commits = pull.get_commits()
+        for commit in commits.reversed:
+            if (globals.debug): print(f"DEBUG:   Commit sha: " + str(commit.sha))
+            if (commit.sha == github_sha):
+                if (globals.debug): print(f"DEBUG:     Found")
+                pull_number_for_sha = pull.number
+                pr = pull
+                pr_commit = commit
+                break
+        if (pull_number_for_sha != 0): break
+
+    if (pr_commit == 0):
+        print(f"ERROR: Unable to find pull request commits")
+        sys.exit(1)
+
+    # globals.printdebug(f"DEBUG: Pull request #{pull_number_for_sha}")
+    #
+    # if pull_number_for_sha is None:
+    #     print(f"BD-Scan-Action: ERROR: Unable to find pull request #{pull_number_for_sha}")
+    #     return False
+    #
+    # pr = repo.get_pull(pull_number_for_sha)
+    #
+    # pr_comments = repo.get_issues_comments(sort='updated', direction='desc')
+    # existing_comment = None
+    # for pr_comment in pr_comments:
+    #     globals.printdebug(f"DEBUG: Issue comment={pr_comment.body}")
+    #     if "Synopsys Black Duck XXXX" in pr_comment.body:
+    #         globals.printdebug(f"DEBUG: Found existing comment")
+    #         existing_comment = pr_comment
+
+    found = False
+    for commit_file in pr_commit.raw_data['files']:
+        if os.path.basename(commit_file['filename']) in globals.pkg_files:
+            found = True
+            break
+
+        if os.path.splitext(commit_file['filename'])[-1] in globals.pkg_exts:
+            found = True
+            break
+
+    return True
+    return found
