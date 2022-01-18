@@ -2,13 +2,13 @@ import json
 import sys
 import hashlib
 import os
+import shutil
 from operator import itemgetter
 
 from blackduck import Client
 
 from BlackDuckUtils import BlackDuckOutput
 from BlackDuckUtils import Utils
-# from BlackDuckUtils import bdio as bdio
 from BlackDuckUtils import asyncdata as asyncdata
 
 from bdscan import globals
@@ -141,7 +141,8 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
             cvulns_table.append(f"| {crow[0]} | {crow[1]} | {crow[2]} | {vscore} | {crow[4]} | {crow[5]} | {crow[6]} |")
 
         return existing_vulns, vuln_count, max_vuln_severity, cvulns_table
-    ##### End of count_vulns()
+    #
+    # End of count_vulns()
 
     globals.printdebug(f"DEBUG: Entering create_scan_outputs({rapid_scan_data},\n{upgrade_dict},\n{dep_dict}")
 
@@ -214,7 +215,6 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
             else:
                 continue
 
-            md_cvulns_table = []
             dir_vulns, cvuln_count, cmax_sev, md_cvulns_table = count_vulns(compid, childid, dir_vulns)
             md_comp_vulns_table.extend(md_cvulns_table)
             md_all_vulns_table.extend(md_cvulns_table)
@@ -357,8 +357,8 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
                                    f"| {vuln_color(crow[4])} | {crow[5]} |")
 
     globals.comment_on_pr_comments = md_directdeps_table + \
-                                     ['\n\n', "Vulnerable Direct dependencies listed below:\n\n"] + \
-                                     globals.comment_on_pr_comments
+        ['\n\n', "Vulnerable Direct dependencies listed below:\n\n"] + \
+        globals.comment_on_pr_comments
 
 
 def test_upgrades(upgrade_dict, deplist, pm):
@@ -502,7 +502,7 @@ def main_process(output, runargs):
                 print('ERROR: Unable to create fix pull request')
                 sys.exit(1)
         else:
-            print('BD-Scan-Action: No ugrades available for Fix PR - skipping')
+            print('BD-Scan-Action: No upgrades available for Fix PR - skipping')
 
     # Optionally comment on the pull request this is for
     if globals.args.comment_on_pr:
@@ -515,6 +515,9 @@ def main_process(output, runargs):
                 sys.exit(1)
         else:
             print('BD-Scan-Action: No upgrades available for Comment on PR - skipping')
+
+    if os.path.isdir(globals.args.output) and os.path.isdir(os.path.join(globals.args.output, "runs")):
+        shutil.rmtree(globals.args.output, ignore_errors=False, onerror=None)
 
     print('Done - SUCCESS')
     sys.exit(0)

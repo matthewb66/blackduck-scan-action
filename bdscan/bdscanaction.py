@@ -39,7 +39,8 @@ def main():
     if globals.args.token is None or globals.args.token == '':
         globals.args.token = os.getenv("BLACKDUCK_API_TOKEN")
 
-    print(f'BD-Scan-Action: Start\n\n--- BD-SCAN-ACTION CONFIGURATION (version {globals.scan_utility_version}) -------')
+    print(f'BD-Scan-Action: Start\n\n'
+          f'--- BD-SCAN-ACTION CONFIGURATION (version {globals.scan_utility_version}) -----------------------')
     if globals.args.trustcert is None or globals.args.trustcert == '':
         globals.args.trustcert = False
     elif str(globals.args.trustcert).lower() == 'true':

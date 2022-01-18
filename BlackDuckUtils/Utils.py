@@ -105,7 +105,7 @@ def get_upgrade_guidance(bd, component_identifier):
 
     # There should be exactly one result!
     # TODO: Error checking?
-    component_result = ''
+    component_result = {}
     for result in search_results:
         component_result = result
 
@@ -113,6 +113,8 @@ def get_upgrade_guidance(bd, component_identifier):
 
     # Get component upgrade data
     # globals.printdebug(f"DBEUG: Looking up upgrade guidance for component '{component_result['componentName']}'")
+    if 'version' not in component_result:
+        return '', ''
     component_upgrade_data = bd.get_json(component_result['version'] + "/upgrade-guidance")
     globals.printdebug("DEBUG: Component upgrade data=" + json.dumps(component_upgrade_data, indent=4) + "\n")
 
