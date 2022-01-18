@@ -1,5 +1,5 @@
 import random
-# import re
+import re
 import sys
 import os
 from bdscan import globals
@@ -172,7 +172,15 @@ def github_pr_comment():
     existing_comment = None
     for pr_comment in pr_comments:
         globals.printdebug(f"DEBUG: Issue comment={pr_comment.body}")
-        if globals.comment_on_pr_header in pr_comment.body:
+        arr = re.split('[/#]', pr_comment.html_url)
+        if len(arr) >= 7:
+            this_pullnum = arr[6]
+            if not this_pullnum.isnumeric():
+                continue
+            this_pullnum = int(this_pullnum)
+        else:
+            continue
+        if this_pullnum == pull_number_for_sha and globals.comment_on_pr_header in pr_comment.body:
             globals.printdebug(f"DEBUG: Found existing comment")
             existing_comment = pr_comment
 
@@ -193,12 +201,12 @@ def github_pr_comment():
     if existing_comment is not None:
         globals.printdebug(f"DEBUG: Update/edit existing comment for PR #{pull_number_for_sha}\n{comments_markdown}")
         # existing_comment.edit("\n".join(comments_markdown))
-        existing_comment.edit(comments_markdown)
+        ret = existing_comment.edit(comments_markdown)
     else:
         globals.printdebug(f"DEBUG: Create new comment for PR #{pull_number_for_sha}")
         github_create_pull_request_comment(g, pr, comments_markdown)
         issue = repo.get_issue(number=pr.number)
-        issue.create_comment(comments_markdown)
+        ret = issue.create_comment(comments_markdown)
     return True
 
 
@@ -285,7 +293,7 @@ def check_files_in_pull_request():
                 break
         if (pull_number_for_sha != 0): break
 
-    if (pr_commit == 0):
+    if pr_commit is None:
         print(f"ERROR: Unable to find pull request commits")
         sys.exit(1)
 
