@@ -147,7 +147,7 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
 
     md_directdeps_header = [
         "",
-        "## Direct Dependencies with vulnerabilities (in direct or transitive children):",
+        "## SUMMARY Direct Dependencies with vulnerabilities:",
         "",
         f"| Direct Dependency | Num Direct Vulns | Max Direct Vuln Severity | Num Indirect Vulns "
         f"| Max Indirect Vuln Severity | Upgrade to |",
@@ -346,8 +346,8 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
             a_comp = compid.replace(':', '@').replace('/', '@').split('@')
             globals.fix_pr_data[f"{a_comp[1]}@{a_comp[2]}"] = fix_pr_node
 
-    md_directdeps_list = sorted(md_directdeps_list, key=itemgetter(2), reverse=True)
     md_directdeps_list = sorted(md_directdeps_list, key=itemgetter(4), reverse=True)
+    md_directdeps_list = sorted(md_directdeps_list, key=itemgetter(2), reverse=True)
 
     md_directdeps_table = md_directdeps_header
     for crow in md_directdeps_list:
@@ -356,7 +356,9 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
         md_directdeps_table.append(f"| {crow[0]} | {crow[1]} | {vuln_color(crow[2])} | {crow[3]} "
                                    f"| {vuln_color(crow[4])} | {crow[5]} |")
 
-    globals.comment_on_pr_comments = md_directdeps_table + ['\n'] + globals.comment_on_pr_comments
+    globals.comment_on_pr_comments = md_directdeps_table + \
+                                     ['\n\n', "Vulnerable Direct dependencies listed below:\n\n"] + \
+                                     globals.comment_on_pr_comments
 
 
 def test_upgrades(upgrade_dict, deplist, pm):
@@ -473,8 +475,9 @@ def main_process(output, runargs):
         for dep in direct_deps_to_upgrade.keys():
             globals.printdebug(f'DEBUG: Checking {dep}')
             if dep in version_dict.keys() and dep in guidance_dict.keys():
-                upgrade_dict[dep] = Utils.find_upgrade_versions(dep, version_dict[dep], origin_dict, guidance_dict[dep],
-                                                             globals.args.upgrade_major)
+                upgrade_dict[dep] = Utils.find_upgrade_versions(
+                    dep, version_dict[dep], origin_dict, guidance_dict[dep],
+                    globals.args.upgrade_major)
                 globals.printdebug(f'DEBUG: find_upgrade_versions() returned {upgrade_dict[dep]}')
 
         # Test upgrades using Detect Rapid scans
@@ -511,7 +514,7 @@ def main_process(output, runargs):
                 print('ERROR: Unable to create comment on existing pull request')
                 sys.exit(1)
         else:
-            print('BD-Scan-Action: No ugrades available for Comment on PR - skipping')
+            print('BD-Scan-Action: No upgrades available for Comment on PR - skipping')
 
     print('Done - SUCCESS')
     sys.exit(0)

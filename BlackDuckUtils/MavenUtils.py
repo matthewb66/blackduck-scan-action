@@ -78,7 +78,7 @@ def upgrade_maven_dependency(package_files, component_name, current_version, com
         subtempdir = os.path.dirname(package_file)
         os.makedirs(os.path.join(tempdirname, subtempdir), exist_ok=True)
 
-        xmlstr = ET.tostring(root, encoding='utf8', method='xml')
+        xmlstr = ET.tostring(root, encoding='UTF-8', method='xml') + '\n'
         with open(os.path.join(tempdirname, package_file), "wb") as fp:
             fp.write(xmlstr)
 
