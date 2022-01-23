@@ -45,7 +45,7 @@ def upgrade_npm_dependency(package_files, component_name, current_version, compo
             os.chdir(subtempdir)
         shutil.copy2(os.path.join(origdir, package_file), os.path.join(tempdirname, package_file))
 
-        print(f'DEBUG: upgrade_npm_dependency() - working in folder {os.getcwd()}')
+        # print(f'DEBUG: upgrade_npm_dependency() - working in folder {os.getcwd()}')
 
         cmd = f"npm install {component_name}@{component_version} --package-lock-only >/dev/null 2>&1"
         print(f"BD-Scan-Action: INFO: Executing NPM to update component: {cmd}")

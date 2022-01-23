@@ -39,7 +39,8 @@ def main():
     if globals.args.token is None or globals.args.token == '':
         globals.args.token = os.getenv("BLACKDUCK_API_TOKEN")
 
-    print(f'BD-Scan-Action: Start\n\n--- BD-SCAN-ACTION CONFIGURATION (version {globals.scan_utility_version}) -------')
+    print(f'BD-Scan-Action: Start\n\n'
+          f'--- BD-SCAN-ACTION CONFIGURATION (version {globals.scan_utility_version}) -----------------------')
     if globals.args.trustcert is None or globals.args.trustcert == '':
         globals.args.trustcert = False
     elif str(globals.args.trustcert).lower() == 'true':
@@ -110,14 +111,16 @@ def main():
     else:
         globals.args.incremental_results = False
 
-    if globals.args.upgrade_indirect is None or globals.args.upgrade_indirect == 'false' or \
-            globals.args.upgrade_indirect == '':
-        globals.args.upgrade_indirect = False
-    elif str(globals.args.upgrade_indirect).lower() == 'true':
-        print('  --upgrade_indirect:    Calculate upgrades for direct dependencies to address indirect vulnerabilities')
-        globals.args.upgrade_indirect = True
-    else:
-        globals.args.upgrade_indirect = False
+    # if globals.args.upgrade_indirect is None or globals.args.upgrade_indirect == 'false' or \
+    #         globals.args.upgrade_indirect == '':
+    #     globals.args.upgrade_indirect = False
+    # elif str(globals.args.upgrade_indirect).lower() == 'true':
+    #     print('  --upgrade_indirect:    Calculate upgrades for direct dependencies to address indirect vulnerabilities')
+    #     globals.args.upgrade_indirect = True
+    # else:
+    #     globals.args.upgrade_indirect = False
+    # Ignoring the upgrade_indirect setting as it is no longer useful
+    globals.args.upgrade_indirect = True
 
     globals.debug = 0
     if globals.args.debug is not None and globals.args.debug != '':

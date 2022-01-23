@@ -203,6 +203,6 @@ def get_projfile(projstring):
 
     projfile = urllib.parse.unquote(arr[3])
     if os.path.isfile(projfile):
-        print(f'Found project file {projfile}')
+        print(f'BD-Scan-Action: INFO: Found project file {projfile}')
         return projfile
     return ''

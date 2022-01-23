@@ -51,7 +51,7 @@ inputs:
     description: "Recommend upgrade guidance to major, not just minor, versions"
     required: false
   upgrade_indirect:
-    description: "Test & upgrade direct dependencies with vulnerable transitive (indirect) dependencies"
+    description: "NOT USED Test & upgrade direct dependencies with vulnerable transitive (indirect) dependencies"
     required: false
   detect_opts:
     description: "Passthrough options to Detect, comma delimited, exclude leading hyphens"

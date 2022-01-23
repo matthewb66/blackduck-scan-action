@@ -1,5 +1,5 @@
 import random
-# import re
+import re
 import sys
 import os
 from bdscan import globals
@@ -49,7 +49,7 @@ def github_commit_file_and_create_fixpr(g, fix_pr_node, files_to_patch):
         globals.printdebug(f"DEBUG: Get SHA for file '{pkgfile}'")
         orig_contents = repo.get_contents(pkgfile)
 
-        print(os.getcwd())
+        # print(os.getcwd())
         globals.printdebug(f"DEBUG: Upload file '{pkgfile}'")
         try:
             with open(files_to_patch[pkgfile], 'r') as fp:
@@ -158,24 +158,34 @@ def github_pr_comment():
 
     github_sha = ref.object.sha
 
-    # globals.printdebug(f"DEBUG: Pull request #{pull_number_for_sha}")
-    #
-    # if pull_number_for_sha is None:
-    #     print(f"BD-Scan-Action: ERROR: Unable to find pull request #{pull_number_for_sha}")
-    #     return False
-    #
-    # pr = repo.get_pull(pull_number_for_sha)
-    #
-    # pr_comments = repo.get_issues_comments(sort='updated', direction='desc')
-    # existing_comment = None
-    # for pr_comment in pr_comments:
-    #     globals.printdebug(f"DEBUG: Issue comment={pr_comment.body}")
-    #     if "Synopsys Black Duck XXXX" in pr_comment.body:
-    #         globals.printdebug(f"DEBUG: Found existing comment")
-    #         existing_comment = pr_comment
+    pull_number_for_sha = ref.ref.split('/')[2]
+    globals.printdebug(f"DEBUG: Pull request #{pull_number_for_sha}")
 
-    # # Tricky here, we want everything all in one comment. So prepare a header, then append each of the comments and
-    # # create a comment
+    if pull_number_for_sha is None or not pull_number_for_sha.isnumeric():
+        print(f"BD-Scan-Action: ERROR: Unable to find pull request #{pull_number_for_sha}")
+        return False
+    pull_number_for_sha = int(pull_number_for_sha)
+
+    pr = repo.get_pull(pull_number_for_sha)
+
+    pr_comments = repo.get_issues_comments(sort='updated', direction='desc')
+    existing_comment = None
+    for pr_comment in pr_comments:
+        globals.printdebug(f"DEBUG: Issue comment={pr_comment.body}")
+        arr = re.split('[/#]', pr_comment.html_url)
+        if len(arr) >= 7:
+            this_pullnum = arr[6]
+            if not this_pullnum.isnumeric():
+                continue
+            this_pullnum = int(this_pullnum)
+        else:
+            continue
+        if this_pullnum == pull_number_for_sha and globals.comment_on_pr_header in pr_comment.body:
+            globals.printdebug(f"DEBUG: Found existing comment")
+            existing_comment = pr_comment
+
+    # Tricky here, we want everything all in one comment. So prepare a header, then append each of the comments and
+    # create a comment
     # comments_markdown = [
     #     "| Component | Vulnerability | Severity |  Policy | Description | Current Ver | Upgrade to |",
     #     "| --- | --- | --- | --- | --- | --- | --- |"
@@ -183,24 +193,24 @@ def github_pr_comment():
     #
     # for comment in globals.comment_on_pr_comments:
     #     comments_markdown.append(comment)
-    # comments_markdown = "# Synopsys Black Duck" + "\n".join(globals.comment_on_pr_comments)
-    #
-    # if len(comments_markdown) > 65535:
-    #     comments_markdown = comments_markdown[:65535]
-    #
-    # if existing_comment is not None:
-    #     globals.printdebug(f"DEBUG: Update/edit existing comment for PR #{pull_number_for_sha}\n{comments_markdown}")
-    #     # existing_comment.edit("\n".join(comments_markdown))
-    #     existing_comment.edit(comments_markdown)
-    # else:
-    #     globals.printdebug(f"DEBUG: Create new comment for PR #{pull_number_for_sha}")
-    #     github_create_pull_request_comment(g, pr, comments_markdown)
-    #     issue = repo.get_issue(number=pr.number)
-    #     issue.create_comment(comments_markdown)
+    comments_markdown = f"# {globals.comment_on_pr_header}\n" + "\n".join(globals.comment_on_pr_comments)
+
+    if len(comments_markdown) > 65535:
+        comments_markdown = comments_markdown[:65535]
+
+    if existing_comment is not None:
+        globals.printdebug(f"DEBUG: Update/edit existing comment for PR #{pull_number_for_sha}\n{comments_markdown}")
+        # existing_comment.edit("\n".join(comments_markdown))
+        ret = existing_comment.edit(comments_markdown)
+    else:
+        globals.printdebug(f"DEBUG: Create new comment for PR #{pull_number_for_sha}")
+        github_create_pull_request_comment(g, pr, comments_markdown)
+        issue = repo.get_issue(number=pr.number)
+        ret = issue.create_comment(comments_markdown)
     return True
 
 
-def github_set_commit_status(is_failure):
+def github_set_commit_status(is_ok):
     globals.printdebug(f"DEBUG: Set check status for commit '{globals.github_sha}', connect to GitHub at "
                        f"{globals.github_api_url}")
     g = Github(globals.github_token, base_url=globals.github_api_url)
@@ -209,7 +219,7 @@ def github_set_commit_status(is_failure):
     repo = g.get_repo(globals.github_repo)
     globals.printdebug(repo)
 
-    if is_failure:
+    if not is_ok:
         status = repo.get_commit(sha=globals.github_sha).create_status(
             state="failure",
             target_url="https://synopsys.com/software",
@@ -283,7 +293,7 @@ def check_files_in_pull_request():
                 break
         if (pull_number_for_sha != 0): break
 
-    if (pr_commit == 0):
+    if pr_commit is None:
         print(f"ERROR: Unable to find pull request commits")
         sys.exit(1)
 
@@ -313,5 +323,4 @@ def check_files_in_pull_request():
             found = True
             break
 
-    return True
     return found
