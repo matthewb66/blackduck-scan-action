@@ -49,7 +49,7 @@ def github_commit_file_and_create_fixpr(g, fix_pr_node, files_to_patch):
         globals.printdebug(f"DEBUG: Get SHA for file '{pkgfile}'")
         orig_contents = repo.get_contents(pkgfile)
 
-        print(os.getcwd())
+        # print(os.getcwd())
         globals.printdebug(f"DEBUG: Upload file '{pkgfile}'")
         try:
             with open(files_to_patch[pkgfile], 'r') as fp:
@@ -193,7 +193,7 @@ def github_pr_comment():
     #
     # for comment in globals.comment_on_pr_comments:
     #     comments_markdown.append(comment)
-    comments_markdown = f"# {globals.comment_on_pr_header}" + "\n".join(globals.comment_on_pr_comments)
+    comments_markdown = f"# {globals.comment_on_pr_header}\n" + "\n".join(globals.comment_on_pr_comments)
 
     if len(comments_markdown) > 65535:
         comments_markdown = comments_markdown[:65535]
@@ -210,7 +210,7 @@ def github_pr_comment():
     return True
 
 
-def github_set_commit_status(is_failure):
+def github_set_commit_status(is_ok):
     globals.printdebug(f"DEBUG: Set check status for commit '{globals.github_sha}', connect to GitHub at "
                        f"{globals.github_api_url}")
     g = Github(globals.github_token, base_url=globals.github_api_url)
@@ -219,7 +219,7 @@ def github_set_commit_status(is_failure):
     repo = g.get_repo(globals.github_repo)
     globals.printdebug(repo)
 
-    if is_failure:
+    if not is_ok:
         status = repo.get_commit(sha=globals.github_sha).create_status(
             state="failure",
             target_url="https://synopsys.com/software",

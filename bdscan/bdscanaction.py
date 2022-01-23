@@ -111,14 +111,16 @@ def main():
     else:
         globals.args.incremental_results = False
 
-    if globals.args.upgrade_indirect is None or globals.args.upgrade_indirect == 'false' or \
-            globals.args.upgrade_indirect == '':
-        globals.args.upgrade_indirect = False
-    elif str(globals.args.upgrade_indirect).lower() == 'true':
-        print('  --upgrade_indirect:    Calculate upgrades for direct dependencies to address indirect vulnerabilities')
-        globals.args.upgrade_indirect = True
-    else:
-        globals.args.upgrade_indirect = False
+    # if globals.args.upgrade_indirect is None or globals.args.upgrade_indirect == 'false' or \
+    #         globals.args.upgrade_indirect == '':
+    #     globals.args.upgrade_indirect = False
+    # elif str(globals.args.upgrade_indirect).lower() == 'true':
+    #     print('  --upgrade_indirect:    Calculate upgrades for direct dependencies to address indirect vulnerabilities')
+    #     globals.args.upgrade_indirect = True
+    # else:
+    #     globals.args.upgrade_indirect = False
+    # Ignoring the upgrade_indirect setting as it is no longer useful
+    globals.args.upgrade_indirect = True
 
     globals.debug = 0
     if globals.args.debug is not None and globals.args.debug != '':

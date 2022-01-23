@@ -151,7 +151,7 @@ def find_comp_in_projfiles(package_files, componentid):
     for package_file in package_files:
         if comp_ns == 'npmjs' and package_file.endswith('package-lock.json'):
             # Need to skip package-lock.json if component exists in package.json
-            print('DEBUG: skipping package-lock.json')
+            # print('DEBUG: skipping package-lock.json')
             continue
         line = line_num_for_phrase_in_file(comp_name, version, package_file, comp_ns)
         if line > 0:
@@ -277,13 +277,6 @@ def attempt_indirect_upgrade(pm, deps_list, upgrade_dict, detect_jar, connectopt
 
     os.chdir(origdir)
     dirname.cleanup()
-
-    print('\nRECOMMENDED UPGRADES FOR DIRECT DEPENDENCIES:')
-    for upgrade in good_upgrades_dict.keys():
-        print(f"- {upgrade}: Upgrade version = {good_upgrades_dict[upgrade]}")
-    if len(good_upgrades_dict) == 0:
-        print('- None')
-    print('\n')
 
     return good_upgrades_dict
 

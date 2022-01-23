@@ -110,8 +110,9 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
                     if max_vuln_severity < vuln['overallScore']:
                         max_vuln_severity = vuln['overallScore']
 
-                    desc = vuln['description'].replace('\n', ' ')[:200]
+                    desc = vuln['description'].replace('\n', ' ')
                     if len(desc) > 200:
+                        desc = desc[:200]
                         desc += ' ...'
                     name = f"{vuln['name']}"
                     link = f"{globals.args.url}/api/vulnerabilities/{name}/overview"
@@ -456,6 +457,7 @@ def main_process(output, runargs):
         print('BD-Scan-Action: INFO: No policy violations found - Ending gracefully')
         sys.exit(0)
 
+    good_upgrades = {}
     if globals.args.upgrade_indirect:
         # check for indirect upgrades
         #
@@ -468,10 +470,9 @@ def main_process(output, runargs):
         upgrade_dict = {}
         globals.printdebug('DEBUG: DIRECT DEPS TO UPGRADE')
         globals.printdebug(json.dumps(direct_deps_to_upgrade, indent=4))
-        # globals.printdebug('DEBUG: VERSION DICT')
-        # globals.printdebug(json.dumps(version_dict, indent=4))
         globals.printdebug('DEBUG: GUIDANCE DICT')
         globals.printdebug(json.dumps(guidance_dict, indent=4))
+
         for dep in direct_deps_to_upgrade.keys():
             globals.printdebug(f'DEBUG: Checking {dep}')
             if dep in version_dict.keys() and dep in guidance_dict.keys():
@@ -482,8 +483,13 @@ def main_process(output, runargs):
 
         # Test upgrades using Detect Rapid scans
         good_upgrades = test_upgrades(upgrade_dict, list(direct_deps_to_upgrade.keys()), pm)
-    else:
-        good_upgrades = {}
+        print('\nRECOMMENDED UPGRADES FOR DIRECT DEPENDENCIES:')
+        for upgrade in good_upgrades.keys():
+            files = ','.join(direct_deps_to_upgrade[upgrade])
+            print(f"- {upgrade}: Upgrade version = {good_upgrades[upgrade]} - Defined in project file(s):'{files}'")
+        if len(good_upgrades) == 0:
+            print('- None')
+        print('')
 
     # Process data
     create_scan_outputs(rapid_scan_data, good_upgrades, dep_dict, direct_deps_to_upgrade)
@@ -499,25 +505,28 @@ def main_process(output, runargs):
                 github_workflow.github_set_commit_status(True)
                 print('BD-Scan-Action: Created fix pull request')
             else:
-                print('ERROR: Unable to create fix pull request')
+                print('BD-Scan-Action: ERROR: Unable to create fix pull request')
                 sys.exit(1)
         else:
             print('BD-Scan-Action: No upgrades available for Fix PR - skipping')
 
     # Optionally comment on the pull request this is for
     if globals.args.comment_on_pr:
+        status_ok = True
         if len(globals.comment_on_pr_comments) > 0:
             if github_workflow.github_pr_comment():
-                github_workflow.github_set_commit_status(True)
+                status_ok = False
                 print('BD-Scan-Action: Created comment on existing pull request')
             else:
-                print('ERROR: Unable to create comment on existing pull request')
+                print('BD-Scan-Action: ERROR: Unable to create comment on existing pull request')
                 sys.exit(1)
         else:
             print('BD-Scan-Action: No upgrades available for Comment on PR - skipping')
+        github_workflow.github_set_commit_status(status_ok)
 
     if os.path.isdir(globals.args.output) and os.path.isdir(os.path.join(globals.args.output, "runs")):
         shutil.rmtree(globals.args.output, ignore_errors=False, onerror=None)
+        print(f'BD-Scan-Action: INFO: Cleaning up folder {globals.args.output}')
 
-    print('Done - SUCCESS')
+    print('BD-Scan-Action: Done - SUCCESS')
     sys.exit(0)
