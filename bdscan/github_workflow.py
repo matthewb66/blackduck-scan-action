@@ -45,7 +45,10 @@ def github_commit_file_and_create_fixpr(g, fix_pr_node, files_to_patch):
     commit_message = f"Update {fix_pr_node['componentName']} to fix known security vulnerabilities"
 
     # for file_to_patch in globals.files_to_patch:
-    for pkgfile in fix_pr_node['projfiles']:
+    #for pkgfile in fix_pr_node['projfiles']: # We need to get the files to patch from the files_to_patch,
+    # which may include more than what we identify for each package manager (e.g. package-lock.json). This
+    # is stored in a dict, with the key as the repo file name and the value as the local (modoified) file 
+    for pkgfile in files_to_patch.keys():
         globals.printdebug(f"DEBUG: Get SHA for file '{pkgfile}'")
         orig_contents = repo.get_contents(pkgfile)
 
@@ -132,7 +135,9 @@ def github_fix_pr():
                   f"not supported yet")
             return False
 
-        if len(files_to_patch) == 0:
+        if globals.debug: print(f"DEBUG: files_to_patch = {files_to_patch}")
+
+        if len(files_to_patch.keys()) == 0:
             print('BD-Scan-Action: WARN: Unable to apply fix patch - cannot determine containing package file')
             return False
 
