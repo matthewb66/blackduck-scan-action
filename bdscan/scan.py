@@ -419,6 +419,14 @@ def main_process(output, runargs):
     globals.bb_branch = os.getenv("BITBUCKET_BRANCH")
     globals.bb_pull_number = os.getenv("BITBUCKET_PULL_NUMBER")
 
+    print(f"DEBUG: BITBUCKET_URL={globals.bb_url}")
+    print(f"DEBUG: BITBUCKET_USERNAME={globals.bb_username}")
+    print(f"DEBUG: BITBUCKET_PASSWORD={globals.bb_password}")
+    print(f"DEBUG: BITBUCKET_BRANCH={globals.bb_branch}")
+    print(f"DEBUG: BITBUCKET_PROJECT={globals.bb_project}")
+    print(f"DEBUG: BITBUCKET_REPO={globals.bb_repo}")
+    print(f"DEBUG: BITBUCKET_REF={globals.bb_ref}")
+
     if (globals.bb_url is None or globals.bb_username is None or globals.bb_password is None
             or globals.bb_project is None or globals.bb_repo is None or globals.bb_ref is None
             or globals.bb_branch is None):
