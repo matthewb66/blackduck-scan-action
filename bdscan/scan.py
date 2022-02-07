@@ -13,6 +13,8 @@ from BlackDuckUtils import asyncdata as asyncdata
 
 from bdscan import globals
 from bdscan import github_workflow
+from bdscan import bitbucket_workflow
+
 
 
 def process_bd_scan(output):
@@ -67,14 +69,14 @@ def unique(list1):
 
 def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_upgrade):
     def vuln_color(value):
-        if value > 9:
-            return f'<span style="color:DarkRed">{str(value)}</span>'
-        elif value > 7:
-            return f'<span style="color:Red">{str(value)}</span>'
-        elif value > 5:
-            return f'<span style="color:Orange">{str(value)}</span>'
-        else:
-            return f'{str(value)}'
+        #if value > 9:
+        #    return f'<span style="color:DarkRed">{str(value)}</span>'
+        #elif value > 7:
+        #    return f'<span style="color:Red">{str(value)}</span>'
+        #elif value > 5:
+        #    return f'<span style="color:Orange">{str(value)}</span>'
+        #else:
+        return f'{str(value)}'
 
     def count_vulns(parentid, childid, existing_vulns):
         if parentid != '':
@@ -116,7 +118,8 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
                         desc += ' ...'
                     name = f"{vuln['name']}"
                     link = f"{globals.args.url}/api/vulnerabilities/{name}/overview"
-                    vulnname = f'<a href="{link}" target="_blank">{name}</a>'
+                    # vulnname = f'<a href="{link}" target="_blank">{name}</a>'
+                    vulnname = f'[{name}]({link})'
 
                     cvulns_list.append(
                         [
@@ -157,7 +160,7 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
     ]
     md_vulns_header = [
         "",
-        "| Parent | Child Component | Vulnerability | Score |  Policy Violated | Description | Current Ver |",
+        "| Parent &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| Child Component&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Vulnerability&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Score&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |  Policy Violated | Description | Current Ver&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |",
         "| --- | --- | --- | --- | --- | --- | --- |"
     ]
     md_directdeps_list = []
@@ -407,25 +410,27 @@ def write_sarif(sarif_file):
 
 
 def main_process(output, runargs):
-    globals.github_token = os.getenv("GITHUB_TOKEN")
-    globals.github_repo = os.getenv("GITHUB_REPOSITORY")
-    globals.github_ref = os.getenv("GITHUB_REF")
-    globals.printdebug(f'GITHUB_REF={globals.github_ref}')
-    globals.github_api_url = os.getenv("GITHUB_API_URL")
-    globals.github_sha = os.getenv("GITHUB_SHA")
-    globals.printdebug(f'GITHUB_SHA={globals.github_sha}')
+    globals.bb_url = os.getenv("BITBUCKET_URL")
+    globals.bb_username = os.getenv("BITBUCKET_USERNAME")
+    globals.bb_password = os.getenv("BITBUCKET_PASSWORD")
+    globals.bb_project = os.getenv("BITBUCKET_PROJECT")
+    globals.bb_repo = os.getenv("BITBUCKET_REPO")
+    globals.bb_ref = os.getenv("BITBUCKET_REF")
+    globals.bb_branch = os.getenv("BITBUCKET_BRANCH")
+    globals.bb_pull_number = os.getenv("BITBUCKET_PULL_NUMBER")
 
-    if (globals.github_token is None or globals.github_repo is None or globals.github_branch is None or
-            globals.github_api_url is None):
-        print("BD-Scan-Action: ERROR: Cannot find GITHUB_TOKEN, GITHUB_REPOSITORY, GITHUB_REF and/or GITHUB_API_URL "
-              "in the environment - are you running from a GitHub action?")
+    if (globals.bb_url is None or globals.bb_username is None or globals.bb_password is None
+            or globals.bb_project is None or globals.bb_repo is None or globals.bb_ref is None
+            or globals.bb_branch is None):
+        print("BD-Scan-Action: ERROR: Cannot find BITBUCKET_URL, BITBUCKET_USERNAME, BITBUCKET_PASSWORD, BITBUCKET_PROJECT, BITBUCKET_REF and/or BITBUCKET_BRANCH "
+              "in the environment - are you running from a BitBucket pipeline?")
         return False
 
-    if globals.args.fix_pr and not github_workflow.check_files_in_commit():
+    if globals.args.fix_pr and not bitbucket_workflow.check_files_in_commit():
         print('BD-Scan-Action: No package manager changes in commit - skipping dependency analysis')
         sys.exit(0)
 
-    if globals.args.comment_on_pr and not github_workflow.check_files_in_pull_request():
+    if globals.args.comment_on_pr and not bitbucket_workflow.check_files_in_pull_request():
         print('BD-Scan-Action: No package manager changes in pull request - skipping dependency analysis')
         sys.exit(0)
 
@@ -494,15 +499,15 @@ def main_process(output, runargs):
     # Process data
     create_scan_outputs(rapid_scan_data, good_upgrades, dep_dict, direct_deps_to_upgrade)
 
-    if globals.args.sarif is not None and globals.args.sarif != '':
-        print(f"BD-Scan-Action: Writing sarif output file '{globals.args.sarif}' ...")
-        write_sarif(globals.args.sarif)
+    #if globals.args.sarif is not None and globals.args.sarif != '':
+    #    print(f"BD-Scan-Action: Writing sarif output file '{globals.args.sarif}' ...")
+    #    write_sarif(globals.args.sarif)
 
     # Optionally generate Fix PR
     if globals.args.fix_pr:
         if len(globals.fix_pr_data.values()) > 0:
-            if github_workflow.github_fix_pr():
-                github_workflow.github_set_commit_status(True)
+            if bitbucket_workflow.bitbucket_fix_pr():
+                #bitbucket_workflow.bitbucket_set_commit_status(True)
                 print('BD-Scan-Action: Created fix pull request')
             else:
                 print('BD-Scan-Action: ERROR: Unable to create fix pull request')
@@ -514,7 +519,7 @@ def main_process(output, runargs):
     if globals.args.comment_on_pr:
         status_ok = True
         if len(globals.comment_on_pr_comments) > 0:
-            if github_workflow.github_pr_comment():
+            if bitbucket_workflow.bitbucket_pr_comment():
                 status_ok = False
                 print('BD-Scan-Action: Created comment on existing pull request')
             else:
@@ -522,7 +527,8 @@ def main_process(output, runargs):
                 sys.exit(1)
         else:
             print('BD-Scan-Action: No upgrades available for Comment on PR - skipping')
-        github_workflow.github_set_commit_status(status_ok)
+
+        #github_workflow.github_set_commit_status(status_ok)
 
     if os.path.isdir(globals.args.output) and os.path.isdir(os.path.join(globals.args.output, "runs")):
         shutil.rmtree(globals.args.output, ignore_errors=False, onerror=None)

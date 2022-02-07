@@ -33,6 +33,16 @@ rscan_items = []
 
 comment_on_pr_header = "Synopsys Black Duck - Vulnerabilities Reported"
 
+bb_url = ''
+bb_username = ''
+bb_password = ''
+bb_project = ''
+bb_repo = ''
+bb_ref = ''
+bb_branch = ''
+bb_pull_number = ''
+
+
 github_token = ''
 github_repo = ''
 github_branch = ''
