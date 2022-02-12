@@ -31,7 +31,7 @@ results = []
 fix_pr_data = dict()
 rscan_items = []
 
-comment_on_pr_header = "Synopsys Black Duck - Vulnerabilities Reported"
+comment_on_pr_header = "Synopsys Black Duck - Issues Reported"
 
 github_token = ''
 github_repo = ''

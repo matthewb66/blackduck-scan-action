@@ -10,6 +10,11 @@ from BlackDuckUtils import Utils
 from BlackDuckUtils import NpmUtils
 from BlackDuckUtils import MavenUtils
 from BlackDuckUtils import NugetUtils
+from BlackDuckUtils import GenericUtils
+from BlackDuckUtils import ConanUtils
+from BlackDuckUtils import GoLangUtils
+
+
 
 
 def get_blackduck_status(output_dir):
@@ -107,6 +112,8 @@ def process_rapid_scan(rapid_scan_data, incremental, baseline_comp_cache, bdio_g
 
         comp_ns, comp_name, comp_version = Utils.parse_component_id(item['componentIdentifier'])
 
+        if globals.debug: print(f"DEBUG: comp_ns={comp_ns}")
+
         # If comparing to baseline, look up in cache and continue if already exists
         if incremental and item['componentName'] in baseline_comp_cache:
             if (item['versionName'] in baseline_comp_cache[item['componentName']] and
@@ -144,6 +151,55 @@ version {item['versionName']} because it was not seen in baseline")
                 sys.exit(1)
             else:
                 pm = 'nuget'
+        elif comp_ns == "crates":
+            http_name = GenericUtils.convert_dep_to_bdio(item['componentIdentifier'])
+            if pm != '' and pm != 'cargo':
+                print(f"BD-Scan-Action: ERROR: Mixed package managers not supported")
+                sys.exit(1)
+            else:
+                pm = 'cargo'
+        elif comp_ns == "golang":
+            http_name = GoLangUtils.convert_dep_to_bdio(item['componentIdentifier'])
+            if pm != '' and pm != 'golang':
+                print(f"BD-Scan-Action: ERROR: Mixed package managers not supported")
+                sys.exit(1)
+            else:
+                pm = 'golang'
+        elif comp_ns == "pypi":
+            http_name = GenericUtils.convert_dep_to_bdio(item['componentIdentifier'])
+            if pm != '' and pm != 'pypi':
+                print(f"BD-Scan-Action: ERROR: Mixed package managers not supported")
+                sys.exit(1)
+            else:
+                pm = 'pypi'
+        elif comp_ns == "hex":
+            http_name = GenericUtils.convert_dep_to_bdio(item['componentIdentifier'])
+            if pm != '' and pm != 'hex':
+                print(f"BD-Scan-Action: ERROR: Mixed package managers not supported")
+                sys.exit(1)
+            else:
+                pm = 'hex'
+        elif comp_ns == "conan":
+            http_name = ConanUtils.convert_dep_to_bdio(item['componentIdentifier'])
+            if pm != '' and pm != 'conan':
+                print(f"BD-Scan-Action: ERROR: Mixed package managers not supported")
+                sys.exit(1)
+            else:
+                pm = 'conan'
+        elif comp_ns == "dart":
+            http_name = GenericUtils.convert_dep_to_bdio(item['componentIdentifier'])
+            if pm != '' and pm != 'dart':
+                print(f"BD-Scan-Action: ERROR: Mixed package managers not supported")
+                sys.exit(1)
+            else:
+                pm = 'dart'
+        elif comp_ns == "anaconda":
+            http_name = GenericUtils.convert_dep_to_bdio(item['componentIdentifier'])
+            if pm != '' and pm != 'anaconda':
+                print(f"BD-Scan-Action: ERROR: Mixed package managers not supported")
+                sys.exit(1)
+            else:
+                pm = 'anaconda'
         else:
             print(f"BD-Scan-Action: ERROR: Domain '{comp_ns}' not supported yet")
             sys.exit(1)

@@ -10,6 +10,10 @@ from pathlib import Path
 from BlackDuckUtils import NpmUtils
 from BlackDuckUtils import MavenUtils
 from BlackDuckUtils import NugetUtils
+from BlackDuckUtils import GenericUtils
+from BlackDuckUtils import GoLangUtils
+from BlackDuckUtils import ConanUtils
+
 from BlackDuckUtils import bdio as bdio
 from BlackDuckUtils import BlackDuckOutput
 
@@ -85,6 +89,20 @@ def parse_component_id(component_id):
         comp_ns, comp_name, comp_version = MavenUtils.parse_component_id(component_id)
     elif comp_ns == "nuget":
         comp_ns, comp_name, comp_version = NugetUtils.parse_component_id(component_id)
+    elif comp_ns == "crates":
+        comp_ns, comp_name, comp_version = GenericUtils.parse_component_id(component_id)
+    elif comp_ns == "golang":
+        comp_ns, comp_name, comp_version = GoLangUtils.parse_component_id(component_id)
+    elif comp_ns == "pypi":
+        comp_ns, comp_name, comp_version = GenericUtils.parse_component_id(component_id)
+    elif comp_ns == "hex":
+        comp_ns, comp_name, comp_version = GenericUtils.parse_component_id(component_id)
+    elif comp_ns == "conan":
+        comp_ns, comp_name, comp_version = ConanUtils.parse_component_id(component_id)
+    elif comp_ns == "dart":
+        comp_ns, comp_name, comp_version = GenericUtils.parse_component_id(component_id)
+    elif comp_ns == "anaconda":
+        comp_ns, comp_name, comp_version = GenericUtils.parse_component_id(component_id)
     else:
         print(f"BD-Scan-Action: ERROR: Package domain '{comp_ns}' is unsupported at this time")
         sys.exit(1)
@@ -132,7 +150,7 @@ def get_upgrade_guidance(bd, component_identifier):
 
 
 def line_num_for_phrase_in_file(comp, ver, filename, comp_ns):
-    if comp_ns == 'maven':
+    if comp_ns == 'maven' and not filename.endswith('build.gradle'):
         return MavenUtils.get_pom_line(comp, ver, filename)
     else:
         try:
@@ -153,6 +171,8 @@ def find_comp_in_projfiles(package_files, componentid):
             # Need to skip package-lock.json if component exists in package.json
             # print('DEBUG: skipping package-lock.json')
             continue
+
+        if globals.debug: print(f"DEBUG: Reading from PKG file '{package_file}'")
         line = line_num_for_phrase_in_file(comp_name, version, package_file, comp_ns)
         if line > 0:
             globals.printdebug(f"DEBUG: '{comp_name}': PKG file'{package_file}' Line {line}")
@@ -289,6 +309,20 @@ def normalise_dep(pm, compid):
         return MavenUtils.normalise_dep(compid)
     elif pm == 'nuget':
         return NugetUtils.normalise_dep(compid)
+    elif pm == 'cargo':
+        return GenericUtils.normalise_dep(compid)
+    elif pm == 'golang':
+        return GoLangUtils.normalise_dep(compid)
+    elif pm == 'pypi':
+        return GenericUtils.normalise_dep(compid)
+    elif pm == 'hex':
+        return GenericUtils.normalise_dep(compid)
+    elif pm == 'conan':
+        return ConanUtils.normalise_dep(compid)
+    elif pm == 'dart':
+        return GenericUtils.normalise_dep(compid)
+    elif pm == 'anaconda':
+        return GenericUtils.normalise_dep(compid)
     else:
         return ''
 

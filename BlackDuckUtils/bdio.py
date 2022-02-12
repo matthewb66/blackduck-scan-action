@@ -15,6 +15,10 @@ import networkx as nx
 from BlackDuckUtils import Utils
 from BlackDuckUtils import NpmUtils
 from BlackDuckUtils import MavenUtils
+from BlackDuckUtils import GenericUtils
+from BlackDuckUtils import ConanUtils
+from BlackDuckUtils import GoLangUtils
+
 # from blackduck import Client
 
 
@@ -100,12 +104,28 @@ def get_bdio_dependency_graph(output_dir):
 def get_dependency_type(bdio_graph, bdio_projects, componentIdentifier):
     comp_ns, comp_name, comp_version = Utils.parse_component_id(componentIdentifier)    # Matching in the BDIO requires an http: prefix
 
+    if globals.debug: print(f"DEBUG: comp_ns={comp_ns}")
+
     dependency_type = "Direct"
 
     if (comp_ns == "npmjs"):
         comp_http_name = NpmUtils.convert_dep_to_bdio(componentIdentifier)
     elif (comp_ns == "maven"):
         comp_http_name = MavenUtils.convert_to_bdio(componentIdentifier)
+    elif (comp_ns == "crates"):
+        comp_http_name = GenericUtils.convert_to_bdio(componentIdentifier)
+    elif (comp_ns == "golang"):
+        comp_http_name = GoLangUtils.convert_to_bdio(componentIdentifier)
+    elif (comp_ns == "pypi"):
+        comp_http_name = GenericUtils.convert_to_bdio(componentIdentifier)
+    elif (comp_ns == "hex"):
+        comp_http_name = GenericUtils.convert_to_bdio(componentIdentifier)
+    elif (comp_ns == "conan"):
+        comp_http_name = ConanUtils.convert_to_bdio(componentIdentifier)
+    elif (comp_ns == "dart"):
+        comp_http_name = GenericUtils.convert_to_bdio(componentIdentifier)
+    elif (comp_ns == "anaconda"):
+        comp_http_name = GenericUtils.convert_to_bdio(componentIdentifier)
     else:
         print(f"BD-Scan-Action: ERROR: Domain '{comp_ns}' not supported yet")
         sys.exit(1)

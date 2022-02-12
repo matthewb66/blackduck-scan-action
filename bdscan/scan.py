@@ -129,6 +129,33 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
                             child_ver,
                         ]
                     )
+
+                for lic in rscanitem['policyViolationLicenses']:
+                    if lic['name'] in existing_vulns:
+                        continue
+                    existing_vulns.append(lic['name'])
+                    vuln_count += 1
+
+                    #max_vuln_severity = lic['licenseFamilyName']
+                    max_vuln_severity = 5
+
+                    desc = lic['name']
+                    name = f"{lic['name']}"
+                    #link = f"{globals.args.url}/api/vulnerabilities/{name}/overview"
+                    link = "TODO"
+                    vulnname = f'<a href="{link}" target="_blank">{name}</a>'
+
+                    cvulns_list.append(
+                        [
+                            f"{parent_name}/{parent_ver}",
+                            f"{child_name}/{child_ver}",
+                            vulnname,
+                            max_vuln_severity,
+                            lic['violatingPolicies'][0]['policyName'],
+                            desc,
+                            child_ver,
+                        ]
+                    )
                 break
 
         # Sort the table
@@ -149,24 +176,31 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
 
     md_directdeps_header = [
         "",
-        "## SUMMARY Direct Dependencies with vulnerabilities:",
+        "## SUMMARY Direct Dependencies with issues:",
         "",
-        f"| Direct Dependency | Num Direct Vulns | Max Direct Vuln Severity | Num Indirect Vulns "
-        f"| Max Indirect Vuln Severity | Upgrade to |",
+        f"| Direct Dependency | Num Direct Issues | Max Direct Issue Severity | Num Indirect Issues "
+        f"| Max Indirect Issue Severity | Upgrade to |",
         "| --- | --- | --- | --- | --- | --- |"
     ]
     md_vulns_header = [
         "",
-        "| Parent | Child Component | Vulnerability | Score |  Policy Violated | Description | Current Ver |",
+        "| Parent | Child Component | Issue | Score |  Policy Violated | Description | Current Ver |",
         "| --- | --- | --- | --- | --- | --- | --- |"
     ]
     md_directdeps_list = []
 
     md_all_vulns_table = md_vulns_header[:]
 
-    # for item in rapid_scan_data['items']:
-    for compid in direct_deps_to_upgrade.keys():
-        # compid = item['componentIdentifier']
+    # JC: If upgrade indirect is false, loop through ALL items not just those with direct
+    # upgrade guidance.
+
+    report_items = direct_deps_to_upgrade.keys()
+    if globals.args.upgrade_indirect == False:
+        report_items = rapid_scan_data['items']
+
+    for item in report_items:
+        if globals.args.upgrade_indirect == False:
+            compid = item['componentIdentifier']
 
         comp_ns, comp_name, comp_version = Utils.parse_component_id(compid)
 
@@ -175,22 +209,29 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
         else:
             upgrade_ver = None
 
-        # If package file for this direct dep is blank, find from the detect-returned package files
-        pkgfiles = []
-        pkglines = []
-        for projfile in unique(direct_deps_to_upgrade[compid]):
-            if projfile == '':
-                # Find component in top-level pkgfiles
-                package_file, package_line = Utils.find_comp_in_projfiles(globals.detected_package_files, compid)
-            else:
-                package_file, package_line = Utils.find_comp_in_projfiles([projfile], compid)
-            if package_file == 'Unknown' or package_line <= 0:
-                # component doesn't exist in pkgfile - skip
-                continue
+        if globals.args.upgrade_indirect == False:
+            pkgfiles = []
+            pkglines = []
+            package_file, package_line = Utils.find_comp_in_projfiles(globals.detected_package_files, compid)
             pkgfiles.append(package_file)
             pkglines.append(package_line)
-        if len(pkgfiles) == 0:
-            continue
+        else:
+            # If package file for this direct dep is blank, find from the detect-returned package files
+            pkgfiles = []
+            pkglines = []
+            for projfile in unique(direct_deps_to_upgrade[compid]):
+                if projfile == '':
+                    # Find component in top-level pkgfiles
+                    package_file, package_line = Utils.find_comp_in_projfiles(globals.detected_package_files, compid)
+                else:
+                    package_file, package_line = Utils.find_comp_in_projfiles([projfile], compid)
+                if package_file == 'Unknown' or package_line <= 0:
+                    # component doesn't exist in pkgfile - skip
+                    continue
+                pkgfiles.append(package_file)
+                pkglines.append(package_line)
+            if len(pkgfiles) == 0:
+                continue
 
         children = []
         for alldep in dep_dict.keys():
@@ -243,21 +284,21 @@ def create_scan_outputs(rapid_scan_data, upgrade_dict, dep_dict, direct_deps_to_
         )
 
         if dir_vuln_count > 0 and children_num_vulns > 0:
-            shorttext = f"The direct dependency {comp_name}/{comp_version} has {dir_vuln_count} vulnerabilities (max " \
-                        f"score {dir_max_sev}) and {children_num_vulns} vulnerabilities in child dependencies (max " \
+            shorttext = f"The direct dependency {comp_name}/{comp_version} has {dir_vuln_count} issues (max " \
+                        f"score {dir_max_sev}) and {children_num_vulns} issues in child dependencies (max " \
                         f"score {children_max_sev})."
             longtext_md = shorttext + "\n\n" + '\n'.join(md_comp_vulns_table) + '\n'
-            longtext = f"{shorttext}\n\nList of direct and indirect vulnerabilities:\n{','.join(dir_vulns)}"
+            longtext = f"{shorttext}\n\nList of direct and indirect issues:\n{','.join(dir_vulns)}"
         elif dir_vuln_count > 0 and children_num_vulns == 0:
-            shorttext = f"The direct dependency {comp_name}/{comp_version} has {dir_vuln_count} vulnerabilities (max " \
+            shorttext = f"The direct dependency {comp_name}/{comp_version} has {dir_vuln_count} issues (max " \
                         f"score {dir_max_sev})."
             longtext_md = shorttext + "\n\n" + '\n'.join(md_comp_vulns_table) + '\n'
-            longtext = f"{shorttext}\n\nList of direct vulnerabilities:\n{','.join(dir_vulns)}"
+            longtext = f"{shorttext}\n\nList of direct issues:\n{','.join(dir_vulns)}"
         elif children_num_vulns > 0:
-            shorttext = f"The direct dependency {comp_name}/{comp_version} has {children_num_vulns} vulnerabilities " \
+            shorttext = f"The direct dependency {comp_name}/{comp_version} has {children_num_vulns} issues " \
                         f"in child dependencies (max score {children_max_sev})."
             longtext_md = shorttext + "\n\n" + '\n'.join(md_comp_vulns_table) + '\n'
-            longtext = f"{shorttext}\n\nList of indirect vulnerabilities:\n{','.join(dir_vulns)}"
+            longtext = f"{shorttext}\n\nList of indirect issues:\n{','.join(dir_vulns)}"
         else:
             shorttext = ''
             longtext_md = ''
@@ -421,13 +462,13 @@ def main_process(output, runargs):
               "in the environment - are you running from a GitHub action?")
         return False
 
-    if globals.args.fix_pr and not github_workflow.check_files_in_commit():
-        print('BD-Scan-Action: No package manager changes in commit - skipping dependency analysis')
-        sys.exit(0)
+    #if globals.args.fix_pr and not github_workflow.check_files_in_commit():
+    #    print('BD-Scan-Action: No package manager changes in commit - skipping dependency analysis')
+    #    sys.exit(0)
 
-    if globals.args.comment_on_pr and not github_workflow.check_files_in_pull_request():
-        print('BD-Scan-Action: No package manager changes in pull request - skipping dependency analysis')
-        sys.exit(0)
+    #if globals.args.comment_on_pr and not github_workflow.check_files_in_pull_request():
+    #    print('BD-Scan-Action: No package manager changes in pull request - skipping dependency analysis')
+    #    sys.exit(0)
 
     # Run DETECT
     print(f"BD-Scan-Action: INFO: Running Black Duck detect with the following options: {runargs}")
