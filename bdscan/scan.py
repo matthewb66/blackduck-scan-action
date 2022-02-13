@@ -498,6 +498,16 @@ def main_process(output, runargs):
         print('BD-Scan-Action: INFO: No policy violations found - Ending gracefully')
         sys.exit(0)
 
+    if (pm != "mvn" and pm != "npm" and pm != "nuget"):
+        print('BD-Scan-Action: INFO: Not using Maven, NPM or NuGet - disabling indirect upgrades and Fix PRs')
+        globals.args.upgrade_indirect = False
+        globals.args.fix_pr = False
+    else:
+        if globals.args.upgrade_indirect:
+            print('BD-Scan-Action: INFO: Using Maven, NPM or NuGet - indirect upgrades enabled')
+        if globals.args.fix_pr:
+            print('BD-Scan-Action: INFO: Using Maven, NPM or NuGet - Fix PRs enabled')
+
     good_upgrades = {}
     if globals.args.upgrade_indirect:
         # check for indirect upgrades
